@@ -1,0 +1,64 @@
+Panduan Penggunaan Aplikasi Laundry Go STATIS
+
+1. **Halaman Login/Register**
+   - Saat pertama kali membuka aplikasi, pengguna akan dihadapkan dengan halaman Login atau Register.
+   - Jika sudah memiliki akun, pengguna dapat langsung Login.
+   - Akun yang dapat digunakan untuk login:
+     - **Username**: samra
+     - **Password**: samra123
+   - Pengguna juga dapat login dengan akun Google.
+   - Jika belum memiliki akun dan tidak ingin menggunakan akun Google, pengguna dapat melakukan registrasi terlebih dahulu.
+
+2. **Halaman Dashboard**
+   - Setelah login, pengguna akan masuk ke halaman Dashboard.
+   - Di halaman Dashboard terdapat berbagai fitur, yaitu:
+     - **Profile**: Dapat diakses dengan memilih ikon profile.
+     - **Service Type**: Pilihan jenis layanan laundry.
+     - **Cart**: Tempat penyimpanan pesanan sebelum pembayaran.
+     - **Nearest LaundryGo**: Menampilkan lokasi LaundryGo terdekat.
+     - **In Process**: Menampilkan status pesanan yang sedang diproses.
+     - **Your Voucher**: Menampilkan daftar voucher yang dimiliki.
+     - **History**: Menampilkan riwayat pesanan.
+     - **Top Up**: Untuk mengisi saldo akun.
+
+3. **Halaman Profile**
+   - Menampilkan data pengguna.
+   - Terdapat tombol **Logout** untuk keluar dari akun.
+
+4. **Halaman Top Up**
+   - Pengguna dapat melakukan pengisian saldo.
+   - Tekan tombol **Pay** untuk memulai proses top up.
+   - Proses akan berlangsung selama 5 detik, lalu muncul notifikasi sukses.
+   - Untuk kembali ke halaman Top Up, tekan tombol **Done**.
+
+5. **Halaman Service Type**
+   - Pengguna dapat memilih 5 jenis layanan yang tersedia.
+   - Pilihan layanan dapat dipilih dengan menekan tulisan (bukan gambarnya) dari setiap service type.
+
+6. **Halaman Cart**
+   - Setelah memilih layanan, pengguna dapat masuk ke menu Cart.
+   - Tekan tombol **Check Out** untuk melanjutkan pembayaran.
+   - Tekan tombol **Pay** untuk memulai proses pembayaran.
+   - Proses akan berlangsung selama 5 detik, lalu muncul notifikasi sukses.
+   - Untuk kembali ke halaman Dashboard, tekan tombol **Done**.
+
+7. **Halaman Nearest LaundryGo**
+   - Aplikasi akan mengakses lokasi pengguna.
+   - Menampilkan daftar LaundryGo terdekat.
+
+8. **Halaman In Process**
+   - Menampilkan status pesanan yang sedang diproses.
+   - Proses berlangsung selama 9 detik hingga pesanan selesai.
+   - Setelah proses selesai, tekan tombol **Back** untuk kembali ke Dashboard.
+
+9. **Halaman Your Voucher**
+   - Menampilkan daftar voucher yang dimiliki oleh pengguna.
+
+10. **Halaman History**
+   - Menampilkan daftar riwayat pesanan.
+   - Dapat menekan tombol **Check** pada history ke-2 untuk melihat detail pesanan.
+
+NOTE : **semua btn back dapat digunakan
+
+Sekian dan terima kasih atas perhatiannya.
+
