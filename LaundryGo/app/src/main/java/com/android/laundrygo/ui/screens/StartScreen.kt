@@ -98,45 +98,38 @@ private fun StartScreenContent(
 
         // Auth Container
         Column(
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            // Login/Register Buttons Row
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+            // Tombol Login
+            Button(
+                onClick = onLoginClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonColor,
+                    contentColor = ButtonTextColor
+                ),
+                shape = RoundedCornerShape(20.dp)
             ) {
-                // Log In Button
-                OutlinedButton(
-                    onClick = onLoginClick,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = ButtonColor,
-                        contentColor = ButtonTextColor
-                    ),
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier.wrapContentSize()
-                ) {
-                    Text(
-                        text = "Log in",
-                        color = ButtonTextColor
-                    )
-                }
+                Text(text = "Log in")
+            }
 
-                // Register Button
-                OutlinedButton(
-                    onClick = onRegisterClick,
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = ButtonColor,
-                        contentColor = ButtonTextColor
-                    ),
-                    shape = RoundedCornerShape(4.dp),
-                    modifier = Modifier.wrapContentSize()
-                ) {
-                    Text(
-                        text = "Register",
-                        color = ButtonTextColor
-                    )
-                }
+            // Tombol Register
+            Button(
+                onClick = onRegisterClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ButtonColor,
+                    contentColor = ButtonTextColor
+                ),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Text(text = "Register")
             }
         }
     }
