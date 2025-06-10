@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.History
+import com.android.laundrygo.R  // Import your R file
 
 @Composable
 fun DashboardScreen(
@@ -183,7 +184,7 @@ private fun HeaderSection(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5E8C7)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 Column(
@@ -271,12 +272,13 @@ private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
         )
 
         val features = listOf(
-            FeatureItem("Service Type", Icons.Default.Build, "service_type"),
-            FeatureItem("Cart", Icons.Default.ShoppingCart, "cart"),
-            FeatureItem("Nearest LaundryGo", Icons.Default.LocationOn, "nearest_location"),
-            FeatureItem("In Process", Icons.Default.Schedule, "in_process"),  // Use Schedule icon
-            FeatureItem("Your Voucher", Icons.Default.CardGiftcard, "voucher"),  // Use CardGiftcard icon
-            FeatureItem("History", Icons.Default.History, "history")  // Use History icon
+            FeatureItem("Service Type", IconType.DrawableResource(R.drawable.service_type), "service_type"),
+            FeatureItem("Cart", IconType.DrawableResource(R.drawable.cart), "cart"),
+            FeatureItem("Nearest LaundryGo", IconType.DrawableResource(R.drawable.location), "nearest_location"),
+            FeatureItem("In Process", IconType.DrawableResource(R.drawable.in_process), "in_process"),
+            FeatureItem("Your Voucher", IconType.DrawableResource(R.drawable.voucher), "voucher"),
+            // Ikon History tetap menggunakan Material Icon karena tidak ada history.xml di drawable Anda
+            FeatureItem("History", IconType.ImageVectorIcon(Icons.Default.History), "history")
         )
 
         LazyRow(
@@ -314,12 +316,26 @@ private fun FeatureCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = feature.icon,
-                contentDescription = feature.name,
-                modifier = Modifier.size(64.dp),
-                tint = Color(0xFF435585)
-            )
+            when (feature.icon) {
+                is IconType.DrawableResource -> {
+                    Image(
+                        painter = painterResource(id = feature.icon.id),
+                        contentDescription = feature.name,
+                        modifier = Modifier.size(64.dp),
+                        contentScale = ContentScale.Fit
+                    )
+                }
+                is IconType.ImageVectorIcon -> {
+                    Icon(
+                        imageVector = feature.icon.imageVector,
+                        contentDescription = feature.name,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color(0xFF435585)
+                    )
+                }
+
+                else -> {}
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -333,6 +349,7 @@ private fun FeatureCard(
         }
     }
 }
+
 
 @Composable
 private fun PromoSection(onClaimVoucherClick: (String) -> Unit) {
@@ -420,9 +437,14 @@ private fun VoucherCard(
     }
 }
 
+sealed class IconType {
+    data class ImageVectorIcon(val imageVector: ImageVector) : IconType()
+    data class DrawableResource(val id: Int) : IconType()
+}
+
 data class FeatureItem(
     val name: String,
-    val icon: ImageVector,
+    val icon: IconType,
     val id: String
 )
 
