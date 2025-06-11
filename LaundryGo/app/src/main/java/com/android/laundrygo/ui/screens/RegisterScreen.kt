@@ -3,7 +3,6 @@ package com.android.laundrygo.ui.screens
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -13,9 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -23,34 +20,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.RegisterEvent
 import com.android.laundrygo.viewmodel.RegisterUserEvent
 import com.android.laundrygo.viewmodel.RegisterViewModel
-
-// --- Tema Aplikasi (Warna & Tipografi) ---
-// Tema ini bisa digunakan bersama dengan LoginScreen untuk konsistensi.
-
-private val DarkBlue = Color(0xFF344970)
-private val DarkBlueText = Color(0xFF435585)
-private val Cream = Color(0xFFF5E8C7)
-private val White = Color(0xFFFFFFFF)
-
-private val AppColorScheme = lightColorScheme(
-    primary = DarkBlue,
-    onPrimary = White,
-    primaryContainer = Cream,
-    onPrimaryContainer = DarkBlue,
-    background = White,
-    onBackground = DarkBlueText,
-    surface = DarkBlue,
-    onSurface = White,
-    surfaceVariant = DarkBlueText,
-    onSurfaceVariant = White,
-    error = Color(0xFFB00020),
-    onError = White
-)
-
-// --- Composable Utama untuk Layar Registrasi ---
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,19 +49,10 @@ fun RegisterScreen(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Register",
-                        style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Register", style = MaterialTheme.typography.headlineLarge) },
                 navigationIcon = {
                     IconButton(onClick = onBackClicked) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -104,26 +68,25 @@ fun RegisterScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
-                .verticalScroll(rememberScrollState()), // Penting agar form bisa di-scroll
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                shape = RoundedCornerShape(20.dp),
+                shape = MaterialTheme.shapes.large,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp) // Memberi jarak antar field
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
                         text = "New Here?",
                         style = MaterialTheme.typography.headlineLarge,
-                        fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -140,7 +103,6 @@ fun RegisterScreen(
                         )
                     }
 
-                    // Menggunakan fungsi bantuan untuk membuat TextField agar tidak repetitif
                     RegisterTextField(
                         value = uiState.name,
                         onValueChange = { viewModel.onEvent(RegisterUserEvent.NameChanged(it)) },
@@ -188,7 +150,6 @@ fun RegisterScreen(
                         isLoading = uiState.isLoading
                     )
 
-                    // TextField khusus untuk Password
                     OutlinedTextField(
                         value = uiState.password,
                         onValueChange = { viewModel.onEvent(RegisterUserEvent.PasswordChanged(it)) },
@@ -207,19 +168,18 @@ fun RegisterScreen(
                                 )
                             }
                         },
-                        colors = registerTextFieldColors()
+                        colors = themedTextFieldColors() // Menggunakan fungsi bantuan yang sama dengan login
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Tombol "Get Started"
                     Button(
                         onClick = { viewModel.onEvent(RegisterUserEvent.RegisterClicked) },
                         enabled = !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = MaterialTheme.shapes.medium,
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -232,11 +192,7 @@ fun RegisterScreen(
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             } else {
-                                Text(
-                                    "Get Started",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Text("Get Started", style = MaterialTheme.typography.titleLarge)
                             }
                         }
                     }
@@ -246,49 +202,26 @@ fun RegisterScreen(
     }
 }
 
-// Fungsi bantuan untuk mengurangi duplikasi kode TextField
+// Menggunakan kembali fungsi bantuan dari LoginScreen untuk konsistensi
 @Composable
 private fun RegisterTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    keyboardType: KeyboardType = KeyboardType.Text,
-    isError: Boolean,
-    isLoading: Boolean
+    value: String, onValueChange: (String) -> Unit, label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector, keyboardType: KeyboardType = KeyboardType.Text,
+    isError: Boolean, isLoading: Boolean
 ) {
     OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
-        leadingIcon = { Icon(icon, "$label Icon") },
+        value = value, onValueChange = onValueChange, modifier = Modifier.fillMaxWidth(),
+        label = { Text(label) }, leadingIcon = { Icon(icon, "$label Icon") },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        singleLine = true,
-        readOnly = isLoading,
-        isError = isError,
-        colors = registerTextFieldColors()
+        singleLine = true, readOnly = isLoading, isError = isError,
+        colors = themedTextFieldColors()
     )
 }
 
-// Fungsi bantuan untuk warna TextField agar konsisten
-@Composable
-private fun registerTextFieldColors() = TextFieldDefaults.colors(
-    focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
-    focusedTextColor = MaterialTheme.colorScheme.onSurface, unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-    focusedIndicatorColor = MaterialTheme.colorScheme.primaryContainer, unfocusedIndicatorColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    focusedLabelColor = MaterialTheme.colorScheme.primaryContainer, unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    cursorColor = MaterialTheme.colorScheme.primaryContainer,
-    focusedLeadingIconColor = MaterialTheme.colorScheme.primaryContainer, unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-    errorCursorColor = MaterialTheme.colorScheme.error, errorIndicatorColor = MaterialTheme.colorScheme.error,
-    errorLabelColor = MaterialTheme.colorScheme.error, errorLeadingIconColor = MaterialTheme.colorScheme.error
-)
-
-
-@Preview(showBackground = true, device = "id:pixel_4")
+@Preview(showBackground = true)
 @Composable
 fun RegisterScreenPreview() {
-    AppTheme {
+    LaundryGoTheme {
         RegisterScreen(onBackClicked = {}, onRegistrationSuccess = {})
     }
 }

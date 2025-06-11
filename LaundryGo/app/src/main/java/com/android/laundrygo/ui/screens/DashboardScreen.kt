@@ -1,4 +1,4 @@
-package com.android.laundrygo.ui
+package com.android.laundrygo.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,26 +15,20 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.livedata.observeAsState
-import com.android.laundrygo.viewmodel.DashboardViewModel
+import com.android.laundrygo.R
 import com.android.laundrygo.ui.theme.LaundryGoTheme
-import androidx.compose.material.icons.filled.AccountBalanceWallet
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.CardGiftcard
-import androidx.compose.material.icons.filled.History
-import com.android.laundrygo.R  // Import your R file
+import com.android.laundrygo.viewmodel.DashboardViewModel
 
 @Composable
 fun DashboardScreen(
@@ -44,6 +38,8 @@ fun DashboardScreen(
     val userBalance by viewModel.userBalance.observeAsState("0")
     val error by viewModel.error.observeAsState()
 
+    // Screen sekarang tidak lagi membungkus dirinya dengan Theme,
+    // karena Theme akan diterapkan dari level yang lebih tinggi (MainActivity).
     DashboardScreenContent(
         userName = userName,
         userBalance = userBalance,
@@ -51,8 +47,7 @@ fun DashboardScreen(
         onTopUpClick = { viewModel.openTopUpScreen() },
         onSearchClick = { /* Handle search */ },
         onFeatureClick = { feature -> /* Handle feature clicks */ },
-        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
-        onRefreshClick = { viewModel.refreshDashboardData() }
+        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) }
     )
 }
 
@@ -64,46 +59,38 @@ private fun DashboardScreenContent(
     onTopUpClick: () -> Unit,
     onSearchClick: () -> Unit,
     onFeatureClick: (String) -> Unit,
-    onClaimVoucherClick: (String) -> Unit,
-    onRefreshClick: () -> Unit
+    onClaimVoucherClick: (String) -> Unit
 ) {
-    LaundryGoTheme {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.White)
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Header Section
-            HeaderSection(
-                userName = userName,
-                userBalance = userBalance,
-                onSearchClick = onSearchClick,
-                onTopUpClick = onTopUpClick
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background) // DIUBAH
+            .verticalScroll(rememberScrollState())
+    ) {
+        HeaderSection(
+            userName = userName,
+            userBalance = userBalance,
+            onSearchClick = onSearchClick,
+            onTopUpClick = onTopUpClick
+        )
 
-            // Show error if exists
-            error?.let {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                ) {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
+        error?.let {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
-
-            // Features Section
-            FeaturesSection(onFeatureClick = onFeatureClick)
-
-            // Promo Section
-            PromoSection(onClaimVoucherClick = onClaimVoucherClick)
         }
+
+        FeaturesSection(onFeatureClick = onFeatureClick)
+        PromoSection(onClaimVoucherClick = onClaimVoucherClick)
     }
 }
 
@@ -119,14 +106,13 @@ private fun HeaderSection(
             .fillMaxWidth()
             .height(220.dp)
     ) {
-        // Header Background
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(165.dp)
                 .background(
-                    color = Color(0xFF435585),
-                    shape = RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp)
+                    color = MaterialTheme.colorScheme.primary, // DIUBAH
+                    shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
                 )
         )
 
@@ -135,42 +121,38 @@ private fun HeaderSection(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Search Bar and Profile
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Search Button
                 Button(
                     onClick = onSearchClick,
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White),
-                    shape = RoundedCornerShape(8.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background), // DIUBAH
+                    shape = MaterialTheme.shapes.small // DIUBAH
                 ) {
                     Text(
                         text = "Search",
-                        color = Color(0xFF435585),
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
+                        color = MaterialTheme.colorScheme.onBackground, // DIUBAH
+                        style = MaterialTheme.typography.labelLarge // DIUBAH
                     )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Profile Image
                 Box(
                     modifier = Modifier
                         .size(62.dp)
                         .clip(CircleShape)
-                        .background(Color.Gray)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // DIUBAH
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Profile",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary, // DIUBAH
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(8.dp)
@@ -180,75 +162,56 @@ private fun HeaderSection(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Balance Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF5E8C7)),
+                shape = MaterialTheme.shapes.medium, // DIUBAH
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), // DIUBAH
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Hello, $userName",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF344767)
+                        style = MaterialTheme.typography.titleLarge, // DIUBAH
+                        color = MaterialTheme.colorScheme.onBackground // DIUBAH
                     )
-
                     Spacer(modifier = Modifier.height(8.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Wallet Icon
                         Icon(
-                            imageVector = Icons.Default.AccountBalanceWallet,
-                            contentDescription = "Wallet",
-                            tint = Color(0xFF344767),
+                            Icons.Default.AccountBalanceWallet, "Wallet",
+                            tint = MaterialTheme.colorScheme.onBackground, // DIUBAH
                             modifier = Modifier.size(40.dp)
                         )
-
                         Spacer(modifier = Modifier.width(10.dp))
-
-                        // Balance Text
                         Text(
                             text = "Rp $userBalance",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF344767)
+                            style = MaterialTheme.typography.titleLarge, // DIUBAH
+                            color = MaterialTheme.colorScheme.onBackground // DIUBAH
                         )
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        // Divider
+                        Spacer(modifier = Modifier.weight(1f))
                         Box(
                             modifier = Modifier
                                 .width(2.dp)
                                 .height(40.dp)
-                                .background(Color(0xFF344767))
+                                .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)) // DIUBAH
                         )
-
                         Spacer(modifier = Modifier.width(16.dp))
-
-                        // Top Up Button
                         Row(
                             modifier = Modifier.clickable { onTopUpClick() },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Top Up",
-                                tint = Color(0xFF344767),
+                                Icons.Default.Add, "Top Up",
+                                tint = MaterialTheme.colorScheme.onBackground, // DIUBAH
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "Top Up",
-                                fontSize = 14.sp,
-                                color = Color(0xFF344767)
+                                "Top Up",
+                                style = MaterialTheme.typography.labelLarge, // DIUBAH
+                                color = MaterialTheme.colorScheme.onBackground // DIUBAH
                             )
                         }
                     }
@@ -260,14 +223,11 @@ private fun HeaderSection(
 
 @Composable
 private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
-    Column(
-        modifier = Modifier.padding(16.dp)
-    ) {
+    Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = "Features",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF435585),
+            style = MaterialTheme.typography.headlineLarge, // DIUBAH
+            color = MaterialTheme.colorScheme.primary, // DIUBAH
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
@@ -277,36 +237,29 @@ private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
             FeatureItem("Nearest LaundryGo", IconType.DrawableResource(R.drawable.location), "nearest_location"),
             FeatureItem("In Process", IconType.DrawableResource(R.drawable.in_process), "in_process"),
             FeatureItem("Your Voucher", IconType.DrawableResource(R.drawable.voucher), "voucher"),
-            // Ikon History tetap menggunakan Material Icon karena tidak ada history.xml di drawable Anda
             FeatureItem("History", IconType.ImageVectorIcon(Icons.Default.History), "history")
         )
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 8.dp)
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
             items(features) { feature ->
-                FeatureCard(
-                    feature = feature,
-                    onClick = { onFeatureClick(feature.id) }
-                )
+                FeatureCard(feature = feature, onClick = { onFeatureClick(feature.id) })
             }
         }
     }
 }
 
 @Composable
-private fun FeatureCard(
-    feature: FeatureItem,
-    onClick: () -> Unit
-) {
+private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .width(106.dp)
             .height(172.dp)
             .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE1E1E1)),
+        shape = MaterialTheme.shapes.medium, // DIUBAH
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), // DIUBAH
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -316,165 +269,132 @@ private fun FeatureCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            when (feature.icon) {
-                is IconType.DrawableResource -> {
-                    Image(
-                        painter = painterResource(id = feature.icon.id),
-                        contentDescription = feature.name,
-                        modifier = Modifier.size(64.dp),
-                        contentScale = ContentScale.Fit
-                    )
-                }
-                is IconType.ImageVectorIcon -> {
-                    Icon(
-                        imageVector = feature.icon.imageVector,
-                        contentDescription = feature.name,
-                        modifier = Modifier.size(64.dp),
-                        tint = Color(0xFF435585)
-                    )
-                }
-
-                else -> {}
+            when (val icon = feature.icon) {
+                is IconType.DrawableResource -> Image(
+                    painterResource(id = icon.id), feature.name,
+                    modifier = Modifier.size(64.dp), contentScale = ContentScale.Fit
+                )
+                is IconType.ImageVectorIcon -> Icon(
+                    icon.imageVector, feature.name,
+                    modifier = Modifier.size(64.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant // DIUBAH
+                )
             }
-
             Spacer(modifier = Modifier.height(8.dp))
-
             Text(
                 text = feature.name,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.Black,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                style = MaterialTheme.typography.labelLarge, // DIUBAH
+                color = MaterialTheme.colorScheme.onSurfaceVariant, // DIUBAH
+                textAlign = TextAlign.Center
             )
         }
     }
 }
 
-
 @Composable
 private fun PromoSection(onClaimVoucherClick: (String) -> Unit) {
-    Column(
-        modifier = Modifier.padding(16.dp)
-    ) {
+    Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = "Promo",
-            fontSize = 30.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF435585),
+            style = MaterialTheme.typography.headlineLarge, // DIUBAH
+            color = MaterialTheme.colorScheme.primary, // DIUBAH
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
         repeat(3) { index ->
-            VoucherCard(
-                voucherId = "voucher_${index + 1}",
-                onClaimClick = onClaimVoucherClick
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            VoucherCard(voucherId = "voucher_${index + 1}", onClaimClick = onClaimVoucherClick)
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
 
 @Composable
-private fun VoucherCard(
-    voucherId: String,
-    onClaimClick: (String) -> Unit
-) {
+private fun VoucherCard(voucherId: String, onClaimClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(206.dp),
-        shape = RoundedCornerShape(12.dp),
+        shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.primary)
         ) {
-            // Voucher Background (placeholder)
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        color = Color(0xFF435585),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = "Special Offer!",
-                        color = Color.White,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Get 20% discount on your next laundry service",
-                        color = Color.White,
-                        fontSize = 16.sp
-                    )
-                }
+                Text(
+                    text = "Special Offer!",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
+                Text(
+                    text = "Get 20% discount on your next laundry service",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onPrimary
+                )
             }
-
-            // Claim Button
             Button(
                 onClick = { onClaimClick(voucherId) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2B2D30)),
-                shape = RoundedCornerShape(8.dp)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer, // DIUBAH
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer // DIUBAH
+                ),
+                shape = MaterialTheme.shapes.small // DIUBAH
             ) {
-                Text(
-                    text = "Claim",
-                    color = Color.White,
-                    fontSize = 16.sp
-                )
+                Text("Claim", style = MaterialTheme.typography.labelLarge)
             }
         }
     }
 }
 
+// Data classes
 sealed class IconType {
     data class ImageVectorIcon(val imageVector: ImageVector) : IconType()
     data class DrawableResource(val id: Int) : IconType()
 }
+data class FeatureItem(val name: String, val icon: IconType, val id: String)
 
-data class FeatureItem(
-    val name: String,
-    val icon: IconType,
-    val id: String
-)
 
-// Preview Functions
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Dashboard Normal State")
 @Composable
 fun DashboardScreenPreview() {
-    DashboardScreenContent(
-        userName = "Saoirse",
-        userBalance = "1.500.000",
-        error = null,
-        onTopUpClick = {},
-        onSearchClick = {},
-        onFeatureClick = {},
-        onClaimVoucherClick = {},
-        onRefreshClick = {}
-    )
+    LaundryGoTheme {
+        // JANGAN PANGGIL DashboardScreen() di sini karena ia memanggil viewModel()
+        // PANGGIL DashboardScreenContent() dan berikan data palsu
+        DashboardScreenContent(
+            userName = "Saoirse",
+            userBalance = "1.500.000",
+            error = null,
+            onTopUpClick = {},
+            onSearchClick = {},
+            onFeatureClick = {},
+            onClaimVoucherClick = {}
+        )
+    }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Dashboard Error State")
 @Composable
 fun DashboardScreenErrorPreview() {
-    DashboardScreenContent(
-        userName = "User",
-        userBalance = "0",
-        error = "Failed to load user data",
-        onTopUpClick = {},
-        onSearchClick = {},
-        onFeatureClick = {},
-        onClaimVoucherClick = {},
-        onRefreshClick = {}
-    )
+    LaundryGoTheme {
+        // Preview untuk kondisi saat ada error
+        DashboardScreenContent(
+            userName = "User",
+            userBalance = "0",
+            error = "Gagal memuat data pengguna. Silakan coba lagi.",
+            onTopUpClick = {},
+            onSearchClick = {},
+            onFeatureClick = {},
+            onClaimVoucherClick = {}
+        )
+    }
 }

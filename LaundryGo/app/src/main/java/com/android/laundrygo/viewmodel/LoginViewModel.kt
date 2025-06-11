@@ -21,17 +21,15 @@ data class LoginUiState(
 
 // 2. Sealed Interface untuk event sekali jalan (seperti navigasi)
 sealed interface LoginEvent {
-    data object NavigateToHome : LoginEvent
+    data object NavigateToDashboard : LoginEvent // DIUBAH dari NavigateToHome
     data object NavigateToForgotPassword : LoginEvent
 }
 
 class LoginViewModel : ViewModel() {
 
-    // StateFlow untuk menampung UI State, agar UI bisa observe
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState = _uiState.asStateFlow()
 
-    // SharedFlow untuk event sekali jalan
     private val _eventFlow = MutableSharedFlow<LoginEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
@@ -48,30 +46,29 @@ class LoginViewModel : ViewModel() {
     }
 
     fun onLoginClicked() {
-        // Jangan proses jika sedang loading
         if (_uiState.value.isLoading) return
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Simulasi proses login di network
                 delay(2000)
 
                 val state = _uiState.value
                 if (state.username.isBlank() || state.password.isBlank()) {
                     _uiState.update { it.copy(errorMessage = "Username dan password tidak boleh kosong") }
                 } else if (state.username == "user" && state.password == "password") {
-                    // Sukses -> kirim event untuk navigasi
-                    _eventFlow.emit(LoginEvent.NavigateToHome)
+
+                    // --- BAGIAN INI DIUBAH ---
+                    // Kirim event yang benar
+                    _eventFlow.emit(LoginEvent.NavigateToDashboard)
+
                 } else {
-                    // Gagal
                     _uiState.update { it.copy(errorMessage = "Username atau password salah") }
                 }
 
             } catch (e: Exception) {
                 _uiState.update { it.copy(errorMessage = "Terjadi kesalahan: ${e.message}") }
             } finally {
-                // Pastikan loading dihentikan setelah selesai
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
@@ -79,7 +76,6 @@ class LoginViewModel : ViewModel() {
 
     fun onForgotPasswordClicked() {
         viewModelScope.launch {
-            // Contoh: langsung navigasi ke halaman lupa password
             _eventFlow.emit(LoginEvent.NavigateToForgotPassword)
         }
     }
