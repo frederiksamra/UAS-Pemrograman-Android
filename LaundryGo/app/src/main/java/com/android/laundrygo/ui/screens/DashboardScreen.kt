@@ -34,7 +34,9 @@ import com.android.laundrygo.viewmodel.DashboardViewModel
 fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel(),
     onNavigateToServiceType: () -> Unit = {},
-    onNavigateToLocation: () -> Unit = {}
+    onNavigateToLocation: () -> Unit = {},
+    onNavigateToCart: () -> Unit = {},
+    onNavigateToVoucher: () -> Unit = {}
 ) {
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
@@ -51,7 +53,9 @@ fun DashboardScreen(
         onFeatureClick = { feature -> /* Handle feature clicks */ },
         onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
         onNavigateToServiceType = onNavigateToServiceType,
-        onNavigateToLocation = onNavigateToLocation
+        onNavigateToLocation = onNavigateToLocation,
+        onNavigateToCart = onNavigateToCart,
+        onNavigateToVoucher = onNavigateToVoucher
     )
 }
 
@@ -65,7 +69,10 @@ private fun DashboardScreenContent(
     onFeatureClick: (String) -> Unit,
     onClaimVoucherClick: (String) -> Unit,
     onNavigateToServiceType: () -> Unit,
-    onNavigateToLocation: () -> Unit
+    onNavigateToLocation: () -> Unit,
+    onNavigateToCart: () -> Unit,
+    onNavigateToVoucher: () -> Unit
+
 ) {
     Column(
         modifier = Modifier
@@ -99,6 +106,9 @@ private fun DashboardScreenContent(
             when (featureId) {
                 "service_type" -> onNavigateToServiceType()
                 "nearest_location" -> onNavigateToLocation()
+                "cart" -> onNavigateToCart()
+                "voucher" -> onNavigateToVoucher()
+
                 else -> onFeatureClick(featureId)
             }
         })
@@ -391,7 +401,9 @@ fun DashboardScreenPreview() {
             onFeatureClick = {},
             onClaimVoucherClick = {},
             onNavigateToServiceType = {},
-            onNavigateToLocation = {}
+            onNavigateToLocation = {},
+            onNavigateToCart = {},
+            onNavigateToVoucher = {}
         )
     }
 }
@@ -410,7 +422,9 @@ fun DashboardScreenErrorPreview() {
             onFeatureClick = {},
             onClaimVoucherClick = {},
             onNavigateToServiceType = {},
-            onNavigateToLocation = {}
+            onNavigateToLocation = {},
+            onNavigateToCart = {},
+            onNavigateToVoucher = {}
         )
     }
 }

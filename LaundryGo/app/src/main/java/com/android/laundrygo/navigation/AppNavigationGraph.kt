@@ -1,10 +1,13 @@
 package com.android.laundrygo.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.android.laundrygo.ui.screens.BagScreen
+import com.android.laundrygo.ui.screens.CartScreen
+import com.android.laundrygo.ui.screens.CartViewModel
 import com.android.laundrygo.ui.screens.DashboardScreen
 import com.android.laundrygo.ui.screens.DollScreen
 import com.android.laundrygo.ui.screens.LocationScreen
@@ -15,6 +18,7 @@ import com.android.laundrygo.ui.screens.ServiceTypeScreen
 import com.android.laundrygo.ui.screens.ShirtPantsScreen
 import com.android.laundrygo.ui.screens.ShoesScreen
 import com.android.laundrygo.ui.screens.SpecialTreatmentScreen
+import com.android.laundrygo.ui.screens.VoucherScreen
 
 @Composable
 fun AppNavigationGraph() {
@@ -72,7 +76,9 @@ fun AppNavigationGraph() {
         composable(route = Screen.Dashboard.route) {
             DashboardScreen(
                 onNavigateToServiceType = { navController.navigate(Screen.ServiceType.route) },
-                onNavigateToLocation = { navController.navigate(Screen.Location.route) }
+                onNavigateToLocation = { navController.navigate(Screen.Location.route) },
+                onNavigateToCart = {navController.navigate(Screen.Cart.route)},
+                onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) }
                 // Di sini Anda bisa menambahkan parameter navigasi dari dashboard
                 // ke layar lain, contohnya:
                 // onNavigateToProfile = { navController.navigate("profile") }
@@ -135,7 +141,28 @@ fun AppNavigationGraph() {
 
             )
         }
+        // Rute untuk Cart
+        composable(route = Screen.Cart.route) {
+            // Membuat instance ViewModel yang terikat pada tujuan navigasi ini
+            val cartViewModel: CartViewModel = viewModel()
+            CartScreen(
+                viewModel = cartViewModel,
+                onBack = { navController.navigateUp() },
+                onCheckoutClick = {
+                    // Setelah checkout, kembali ke layar sebelumnya (Dashboard)
+                    // Anda juga bisa navigasi ke layar "Pesanan Berhasil" di sini
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        // Rute untuk VoucherScreen (BARU)
+        composable(route = Screen.Voucher.route) {
+            VoucherScreen(
+                onBackClick = {
+                    navController.navigateUp() // Aksi untuk kembali ke layar sebelumnya
+                }
+            )
+        }
     }
-
-
 }
