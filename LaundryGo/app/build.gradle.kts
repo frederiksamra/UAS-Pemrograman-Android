@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services") // <-- TAMBAHKAN BARIS INI
 }
 
 android {
@@ -43,6 +44,9 @@ android {
 }
 
 dependencies {
+    // DIUBAH: Gunakan Firebase BOM untuk mengelola versi secara otomatis
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -51,14 +55,16 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.firebase.auth.ktx)
-    implementation(libs.firebase.firestore.ktx)
+
+    // DIUBAH: Hapus .ktx karena BOM sudah menanganinya
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
+
     implementation(libs.androidx.runtime.livedata)
 
-    // Add this with explicit version if libs.androidx.lifecycle.viewmodel.compose doesn't exist
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
-
-    implementation ("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
+    implementation ("androidx.compose.material:material-icons-extended")
+    implementation ("androidx.navigation:navigation-compose:2.7.7")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

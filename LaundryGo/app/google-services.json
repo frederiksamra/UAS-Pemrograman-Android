@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1085081358340",
+    "project_id": "laundrygo-46dd2",
+    "storage_bucket": "laundrygo-46dd2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1085081358340:android:434d7f1473927351862551",
+        "android_client_info": {
+          "package_name": "com.android.laundrygo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1085081358340-oj710iqrevok2v5t6ahrgtas54sdo7nf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.android.laundrygo",
+            "certificate_hash": "76b4c668b97e252e923befff901154385367e44c"
+          }
+        },
+        {
+          "client_id": "1085081358340-jehu1h4s4bd37lrvsm9bh8usvoeisv6l.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfXJ39Q_H6BPrMsCyEcqeuoA5ioC96boE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1085081358340-jehu1h4s4bd37lrvsm9bh8usvoeisv6l.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
