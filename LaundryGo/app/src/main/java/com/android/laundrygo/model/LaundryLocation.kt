@@ -9,6 +9,5 @@ data class LaundryLocation(
     val city: String,
     val state: String,
     val zipCode: String,
-    val country: String,
-    val imageUrl: String? = null
+    val country: String
 )
