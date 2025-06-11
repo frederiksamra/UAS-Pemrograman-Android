@@ -12,4 +12,6 @@ sealed class Screen(val route: String) {
     data object ShirtPants : Screen("shirt_pants_screen")
     data object Shoes : Screen("shoes_screen")
     data object SpecialTreatment : Screen("special_treatment_screen")
+    data object Cart : Screen("cart_screen")
+    data object Voucher : Screen("voucher_screen")
 }
