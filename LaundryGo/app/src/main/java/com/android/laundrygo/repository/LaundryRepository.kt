@@ -8,91 +8,92 @@ class LaundryRepository {
             LaundryLocation(
                 id = "1",
                 name = "LaundryGo",
-                latitude = -6.2088,
-                longitude = 106.8456,
-                address = "123 Elm Street",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62701",
-                country = "United States"
+                latitude = -7.7828,
+                longitude = 110.3671,
+                address = "Jl. Kaliurang KM 5",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55281",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "2",
                 name = "LaundryGo",
-                latitude = -6.2065,
-                longitude = 106.8235,
-                address = "456 Oak Avenue",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62702",
-                country = "United States"
+                latitude = -7.8014,
+                longitude = 110.3647,
+                address = "Jl. Malioboro No. 15",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55213",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "3",
                 name = "LaundryGo",
-                latitude = -6.2100,
-                longitude = 106.8350,
-                address = "789 Maple Drive",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62703",
-                country = "United States"
+                latitude = -7.7783,
+                longitude = 110.4155,
+                address = "Jl. Gejayan No. 22",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55281",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "4",
                 name = "LaundryGo",
-                latitude = -6.2000,
-                longitude = 106.8300,
-                address = "101 Pine Street",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62704",
-                country = "United States"
+                latitude = -7.7682,
+                longitude = 110.3774,
+                address = "Jl. Seturan Raya No. 8",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55281",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "5",
                 name = "LaundryGo",
-                latitude = -6.2150,
-                longitude = 106.8400,
-                address = "202 Cedar Road",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62705",
-                country = "United States"
+                latitude = -7.8149,
+                longitude = 110.3515,
+                address = "Jl. Parangtritis KM 3",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55143",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "6",
                 name = "LaundryGo",
-                latitude = -6.2200,
-                longitude = 106.8250,
-                address = "303 Birch Lane",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62706",
-                country = "United States"
+                latitude = -7.7844,
+                longitude = 110.4086,
+                address = "Jl. Babarsari No. 10",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55281",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "7",
                 name = "LaundryGo",
-                latitude = -6.2050,
-                longitude = 106.8150,
-                address = "404 Willow Way",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62707",
-                country = "United States"
+                latitude = -7.8025,
+                longitude = 110.4192,
+                address = "Jl. Laksda Adisucipto No. 90",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55281",
+                country = "Indonesia"
             ),
             LaundryLocation(
                 id = "8",
                 name = "LaundryGo",
-                latitude = -6.2175,
-                longitude = 106.8475,
-                address = "505 Aspen Court",
-                city = "Springfield",
-                state = "IL",
-                zipCode = "62708",
-                country = "United States"
+                latitude = -7.7646,
+                longitude = 110.3615,
+                address = "Jl. Affandi No. 25",
+                city = "Yogyakarta",
+                state = "DI Yogyakarta",
+                zipCode = "55283",
+                country = "Indonesia"
             )
         )
     }
+
 }
