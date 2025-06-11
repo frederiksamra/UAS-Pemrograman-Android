@@ -65,6 +65,12 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
     implementation ("androidx.compose.material:material-icons-extended")
     implementation ("androidx.navigation:navigation-compose:2.7.7")
+    implementation(libs.play.services.location)
+
+    implementation("com.google.android.gms:play-services-location:21.1.0")
+    implementation("org.osmdroid:osmdroid-android:6.1.16")
+    implementation(libs.androidx.preference.ktx)
+    implementation(libs.androidx.foundation.layout.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

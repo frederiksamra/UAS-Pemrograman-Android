@@ -32,7 +32,9 @@ import com.android.laundrygo.viewmodel.DashboardViewModel
 
 @Composable
 fun DashboardScreen(
-    viewModel: DashboardViewModel = viewModel()
+    viewModel: DashboardViewModel = viewModel(),
+    onNavigateToServiceType: () -> Unit = {},
+    onNavigateToLocation: () -> Unit = {}
 ) {
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
@@ -47,7 +49,9 @@ fun DashboardScreen(
         onTopUpClick = { viewModel.openTopUpScreen() },
         onSearchClick = { /* Handle search */ },
         onFeatureClick = { feature -> /* Handle feature clicks */ },
-        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) }
+        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
+        onNavigateToServiceType = onNavigateToServiceType,
+        onNavigateToLocation = onNavigateToLocation
     )
 }
 
@@ -59,7 +63,9 @@ private fun DashboardScreenContent(
     onTopUpClick: () -> Unit,
     onSearchClick: () -> Unit,
     onFeatureClick: (String) -> Unit,
-    onClaimVoucherClick: (String) -> Unit
+    onClaimVoucherClick: (String) -> Unit,
+    onNavigateToServiceType: () -> Unit,
+    onNavigateToLocation: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -89,7 +95,13 @@ private fun DashboardScreenContent(
             }
         }
 
-        FeaturesSection(onFeatureClick = onFeatureClick)
+        FeaturesSection(onFeatureClick = { featureId ->
+            when (featureId) {
+                "service_type" -> onNavigateToServiceType()
+                "nearest_location" -> onNavigateToLocation()
+                else -> onFeatureClick(featureId)
+            }
+        })
         PromoSection(onClaimVoucherClick = onClaimVoucherClick)
     }
 }
@@ -377,7 +389,9 @@ fun DashboardScreenPreview() {
             onTopUpClick = {},
             onSearchClick = {},
             onFeatureClick = {},
-            onClaimVoucherClick = {}
+            onClaimVoucherClick = {},
+            onNavigateToServiceType = {},
+            onNavigateToLocation = {}
         )
     }
 }
@@ -394,7 +408,9 @@ fun DashboardScreenErrorPreview() {
             onTopUpClick = {},
             onSearchClick = {},
             onFeatureClick = {},
-            onClaimVoucherClick = {}
+            onClaimVoucherClick = {},
+            onNavigateToServiceType = {},
+            onNavigateToLocation = {}
         )
     }
 }
