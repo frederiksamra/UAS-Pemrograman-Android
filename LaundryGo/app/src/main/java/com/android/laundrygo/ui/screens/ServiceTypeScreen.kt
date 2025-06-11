@@ -1,5 +1,7 @@
 package com.android.laundrygo.ui.screens
-
+import com.android.laundrygo.ui.theme.DarkBlueText
+import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.ui.theme.Cream
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -63,7 +65,7 @@ fun ServiceTypeScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1565C0)
+                    containerColor = DarkBlue
                 )
             )
         },
@@ -114,7 +116,7 @@ fun ServiceTypeScreen(
                                 imageVector = service.icon,
                                 contentDescription = service.label,
                                 modifier = Modifier.size(80.dp),
-                                tint = Color(0xFF1565C0)
+                                tint = DarkBlue
                             )
                             Spacer(Modifier.height(16.dp))
                             Button(

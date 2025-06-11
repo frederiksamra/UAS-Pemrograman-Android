@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
 import com.android.laundrygo.R
+import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.ui.theme.DarkBlueText
 import com.android.laundrygo.ui.theme.White
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -26,10 +28,10 @@ fun BagScreen(
     onAddClick: (String) -> Unit = {},
     onCartClick: () -> Unit = {}
 ) {
-    val blue = Color(0xFF1565C0)
+    val blue = DarkBlueText
     val cream = Color(0xFFFFFDE7)
     val grey = Color(0xFFF5F5F5)
-    val black = Color(0x000000)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -60,7 +62,7 @@ fun BagScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF1565C0)
+                    containerColor = DarkBlue
                 )
             )
         },
