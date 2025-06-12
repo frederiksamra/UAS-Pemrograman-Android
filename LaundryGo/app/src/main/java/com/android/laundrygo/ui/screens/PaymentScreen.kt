@@ -37,13 +37,11 @@ import java.util.*
 fun PaymentScreen(
     onBackClicked: () -> Unit,
     onPaymentSuccess: () -> Unit,
-    // ViewModel sekarang dibuat menggunakan Factory yang sudah didefinisikan
     paymentViewModel: PaymentViewModel = viewModel(factory = PaymentViewModelFactory())
 ) {
     val uiState by paymentViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Menangani event sekali jalan seperti navigasi atau Toast
     LaunchedEffect(uiState.paymentStatus) {
         if (uiState.paymentStatus == PaymentStatus.SUCCESS) {
             Toast.makeText(context, "Payment Successful!", Toast.LENGTH_SHORT).show()
@@ -62,7 +60,14 @@ fun PaymentScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
+                // ✅ PERBAIKAN: Tambahkan warna untuk ikon dan judul
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    // Warna untuk judul "Invoice Payment"
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // Warna untuk ikon panah kembali
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         },
         bottomBar = {
@@ -74,7 +79,6 @@ fun PaymentScreen(
         },
         containerColor = Color.White
     ) { paddingValues ->
-        // Memanggil Composable stateless yang berisi UI murni
         PaymentScreenContent(
             uiState = uiState,
             onMethodSelected = { paymentViewModel.onPaymentMethodSelected(it) },
@@ -175,8 +179,11 @@ fun TotalPriceCard(totalPrice: Int, backgroundColor: Color) {
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         modifier = Modifier.fillMaxWidth()
     ) {
+        // ✅ PERBAIKAN: Tambahkan .fillMaxWidth() pada Column
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier
+                .fillMaxWidth() // <-- Tambahkan ini
+                .padding(20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
