@@ -29,7 +29,6 @@ fun ServiceTypeScreen(
     onBack: () -> Unit,
     onServiceSelected: (String) -> Unit
 ) {
-    // Daftar layanan tidak berubah
     val services = listOf(
         ServiceTypeItem("Pakaian Harian", R.drawable.shirt_and_pant),
         ServiceTypeItem("Perawatan Khusus", R.drawable.special_treatment),
