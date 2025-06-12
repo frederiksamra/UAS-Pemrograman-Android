@@ -45,7 +45,7 @@ android {
 
 dependencies {
     // DIUBAH: Gunakan Firebase BOM untuk mengelola versi secara otomatis
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -62,12 +62,12 @@ dependencies {
 
     implementation(libs.androidx.runtime.livedata)
 
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.3")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.1")
     implementation ("androidx.compose.material:material-icons-extended")
-    implementation ("androidx.navigation:navigation-compose:2.7.7")
+    implementation ("androidx.navigation:navigation-compose:2.9.0")
     implementation(libs.play.services.location)
 
-    implementation("com.google.android.gms:play-services-location:21.1.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("org.osmdroid:osmdroid-android:6.1.16")
     implementation(libs.androidx.preference.ktx)
     implementation(libs.androidx.foundation.layout.android)
