@@ -179,7 +179,6 @@ fun TotalPriceCard(totalPrice: Int, backgroundColor: Color) {
         colors = CardDefaults.cardColors(containerColor = backgroundColor),
         modifier = Modifier.fillMaxWidth()
     ) {
-        // ✅ PERBAIKAN: Tambahkan .fillMaxWidth() pada Column
         Column(
             modifier = Modifier
                 .fillMaxWidth() // <-- Tambahkan ini
