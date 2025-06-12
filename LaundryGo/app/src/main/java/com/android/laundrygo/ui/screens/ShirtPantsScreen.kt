@@ -1,9 +1,10 @@
 package com.android.laundrygo.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
@@ -11,68 +12,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import com.android.laundrygo.R
+import androidx.compose.ui.unit.dp
+import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.DarkBlueText
-import com.android.laundrygo.ui.theme.White
+import com.android.laundrygo.ui.theme.LaundryGoTheme
+
+data class ShirtPantsService(
+    val title: String,
+    val description: String,
+    val price: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShirtPantsScreen(
-    onBack: () -> Unit = {},
-    onAddClick: (String) -> Unit = {},
-    onCartClick: () -> Unit = {}
+    onBack: () -> Unit,
+    onAddClick: (String) -> Unit,
+    onCartClick: () -> Unit
 ) {
-    val blue = DarkBlueText
-    val cream = Color(0xFFFFFDE7)
-    val grey = Color(0xFFF5F5F5)
-    val cards = listOf(
-        ShirtPantsServiceCardData(
-            title = "King Package",
-            desc = "Wash express, ironing, pick up and drop off",
-            price = "IDR 35.000/Kg",
-            backgroundColor = grey
-        ),
-        ShirtPantsServiceCardData(
-            title = "General Package",
-            desc = "Express washing and ironing",
-            price = "IDR 30.000/Kg",
-            backgroundColor = cream
-        ),
-        ShirtPantsServiceCardData(
-            title = "Extra Regular Package",
-            desc = "Regular washing, ironing, pick up and delivery",
-            price = "IDR 20.000/Kg",
-            backgroundColor = grey
-        ),
-        ShirtPantsServiceCardData(
-            title = "Regular Package",
-            desc = "Regular washing and ironing",
-            price = "IDR 14.000/Kg",
-            backgroundColor = cream
-        )
+    val services = listOf(
+        ShirtPantsService("King Package", "Cuci ekspres, setrika, antar jemput", "IDR 35.000/Kg"),
+        ShirtPantsService("General Package", "Cuci ekspres dan setrika", "IDR 30.000/Kg"),
+        ShirtPantsService("Extra Regular Package", "Cuci reguler, setrika, antar jemput", "IDR 20.000/Kg"),
+        ShirtPantsService("Regular Package", "Cuci reguler dan setrika", "IDR 14.000/Kg")
     )
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Shirt & Pants",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = White
-                    )
-                },
+                title = { Text("Pakaian Harian") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_black),
-                            contentDescription = "Back"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali"
                         )
                     }
                 },
@@ -80,35 +55,33 @@ fun ShirtPantsScreen(
                     IconButton(onClick = onCartClick) {
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "Cart",
-                            tint = White,
-                            modifier = Modifier.size(32.dp)
+                            contentDescription = "Keranjang"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBlue
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         },
-        containerColor = grey
-    ) { padding ->
-        Column(
+        containerColor = Color.White
+    ) { innerPadding ->
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(top = 16.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            cards.forEach { card ->
-                ShirtPantsServiceCard(
-                    title = card.title,
-                    desc = card.desc,
-                    price = card.price,
-                    backgroundColor = card.backgroundColor,
-                    textColor = blue,
-                    onAddClick = { onAddClick(card.title) }
+            itemsIndexed(services) { index, service ->
+                val cardColor = if (index % 2 == 0) DarkBlue else Cream
+                ServicePackageCard(
+                    service = service,
+                    containerColor = cardColor,
+                    onAddClick = { onAddClick(service.title) }
                 )
             }
         }
@@ -116,73 +89,87 @@ fun ShirtPantsScreen(
 }
 
 @Composable
-fun ShirtPantsServiceCard(
-    title: String,
-    desc: String,
-    price: String,
-    backgroundColor: Color,
-    textColor: Color,
+private fun ServicePackageCard(
+    service: ShirtPantsService,
+    containerColor: Color,
     onAddClick: () -> Unit
 ) {
+    val isCreamCard = containerColor == Cream
+    val titleColor = if (isCreamCard) MaterialTheme.colorScheme.primary else Color.White
+    val descriptionColor = if (isCreamCard) MaterialTheme.colorScheme.primary.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.8f)
+    val priceColor = if (isCreamCard) MaterialTheme.colorScheme.primary else Color.White
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 0.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
+            containerColor = containerColor
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(backgroundColor)
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = title,
-                    color = textColor,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    text = service.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor
                 )
                 Text(
-                    text = desc,
-                    color = textColor,
-                    fontSize = 14.sp
+                    text = service.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = descriptionColor
                 )
-                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = price,
-                    color = textColor,
-                    fontSize = 16.sp
+                    text = service.price,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = priceColor
                 )
             }
-            IconButton(
+            Spacer(modifier = Modifier.width(16.dp))
+
+            val buttonColors = if(isCreamCard) {
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            } else {
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            FilledTonalButton(
                 onClick = onAddClick,
-                modifier = Modifier
-                    .size(40.dp)
+                colors = buttonColors,
+                contentPadding = PaddingValues(12.dp),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
-                    tint = textColor,
-                    modifier = Modifier.size(32.dp)
+                    contentDescription = "Tambah ${service.title}"
                 )
             }
         }
     }
 }
 
-data class ShirtPantsServiceCardData(val title: String, val desc: String, val price: String, val backgroundColor: Color)
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "ShirtPantsScreen")
 @Composable
 fun ShirtPantsScreenPreview() {
-    ShirtPantsScreen()
+    LaundryGoTheme {
+        ShirtPantsScreen({}, {}, {})
+    }
 }
-

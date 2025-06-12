@@ -1,5 +1,6 @@
 package com.android.laundrygo.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -8,131 +9,126 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.TopUpState
 import com.android.laundrygo.viewmodel.TopUpUiState
 import com.android.laundrygo.viewmodel.TopUpViewModel
 import java.text.NumberFormat
 import java.util.Locale
-import com.android.laundrygo.ui.theme.AppPrimaryColor
-import com.android.laundrygo.ui.theme.AppScreenBackground
-import com.android.laundrygo.ui.theme.AppSecondaryColor
-import com.android.laundrygo.ui.theme.AppTextColorOnDark
-import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.DarkBlueText
 
-
-// Fungsi utama yang mengontrol tampilan berdasarkan state
 @Composable
 fun TopUpScreen(
     onBackClick: () -> Unit,
     topUpViewModel: TopUpViewModel = viewModel()
 ) {
     val state by topUpViewModel.state.collectAsState()
+    val context = LocalContext.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Tampilan akan berganti dengan animasi fade-in/out
-        AnimatedVisibility(
-            visible = state.uiState is TopUpUiState.Idle,
-            enter = fadeIn(),
-            exit = fadeOut()
+    // Menampilkan pesan error dari ViewModel menggunakan Toast
+    LaunchedEffect(state.errorMessage) {
+        state.errorMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            topUpViewModel.clearErrorMessage()
+        }
+    }
+
+    // Menampilkan Snackbar saat top up berhasil (menggantikan SuccessScreen)
+    LaunchedEffect(state.uiState) {
+        if (state.uiState is TopUpUiState.Success) {
+            snackbarHostState.showSnackbar(
+                message = "Top Up Berhasil",
+                duration = SnackbarDuration.Short
+            )
+            // Setelah snackbar selesai, kembali ke halaman sebelumnya
+            topUpViewModel.finishTopUp()
+            onBackClick()
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
+            // Selalu tampilkan konten utama, visibility diatur oleh dialog di atasnya
             TopUpContent(
                 state = state,
                 onBackClick = onBackClick,
                 onAmountSelected = { topUpViewModel.selectAmount(it) },
+                onCustomAmountChanged = { topUpViewModel.onCustomAmountChanged(it) },
                 onPaymentMethodSelected = { topUpViewModel.selectPaymentMethod(it) },
                 onPayClick = { topUpViewModel.processPayment() }
             )
-        }
 
-        AnimatedVisibility(
-            visible = state.uiState is TopUpUiState.Processing,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            ProcessingScreen()
-        }
-
-        AnimatedVisibility(
-            visible = state.uiState is TopUpUiState.Success,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            SuccessScreen(onDoneClick = {
-                topUpViewModel.finishTopUp()
-                onBackClick() // Kembali ke halaman sebelumnya setelah selesai
-            })
+            // Menampilkan dialog loading saat state processing (sesuai guideline Material)
+            if (state.uiState is TopUpUiState.Processing) {
+                ProcessingDialog()
+            }
         }
     }
 }
 
-
-// Composable untuk UI utama pengisian Top Up
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TopUpContent(
     state: TopUpState,
     onBackClick: () -> Unit,
     onAmountSelected: (Long) -> Unit,
+    onCustomAmountChanged: (String) -> Unit,
     onPaymentMethodSelected: (String) -> Unit,
     onPayClick: () -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Top Up", fontWeight = FontWeight.Bold) },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back")
-                    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        TopAppBar(
+            title = { Text("Top Up") },
+            navigationIcon = {
+                IconButton(onClick = onBackClick) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent,
+                titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        },
-        // WARNA DISESUAIKAN: Gunakan background yang serasi dengan layar lain
-        containerColor = AppScreenBackground,
-        bottomBar = {
-            Button(
-                onClick = onPayClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .height(50.dp),
+        )
 
-                shape = MaterialTheme.shapes.medium,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DarkBlue,
-                    contentColor = Color.White
-                )
-            ){
-
-                Text("Pay", fontSize = 18.sp)
-            }
-        }
-    ) { paddingValues ->
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
         ) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -141,14 +137,39 @@ private fun TopUpContent(
             NominalSelection(
                 amounts = state.topUpAmounts,
                 selectedAmount = state.selectedAmount,
-                onAmountSelected = onAmountSelected
+                customAmount = state.customAmount,
+                isCustomAmountSelected = state.isCustomAmountSelected,
+                onAmountSelected = onAmountSelected,
+                onCustomAmountChanged = onCustomAmountChanged
             )
             Spacer(modifier = Modifier.height(24.dp))
             PaymentMethodSelection(
                 methods = state.paymentMethods,
-                selectedMethod = state.selectedPaymentMethod,
+                selectedMethod = state.selectedMethod,
                 onPaymentMethodSelected = onPaymentMethodSelected
             )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        Surface(
+            shadowElevation = 8.dp,
+            color = MaterialTheme.colorScheme.surfaceVariant
+        ) {
+            FilledTonalButton(
+                onClick = onPayClick,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .height(52.dp),
+                enabled = (state.selectedAmount != null || state.isCustomAmountSelected) && state.selectedPaymentMethod != null,
+                shape = MaterialTheme.shapes.medium,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text("Pay", style = MaterialTheme.typography.titleMedium)
+            }
         }
     }
 }
@@ -158,28 +179,25 @@ private fun TopUpContent(
 private fun BalanceCard(balance: Long) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.large,
-        // WARNA DISESUAIKAN: Latar belakang kartu menggunakan surface (biasanya putih/putih gading)
-        colors = CardDefaults.cardColors(containerColor = AppTextColorOnDark),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            modifier = Modifier
+                .padding(20.dp)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Current Balance",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = formatCurrency(balance),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
-                // WARNA DISESUAIKAN: Teks saldo menonjol dengan warna primer
-                color = AppPrimaryColor
+                color = MaterialTheme.colorScheme.primary
             )
         }
     }
@@ -189,22 +207,27 @@ private fun BalanceCard(balance: Long) {
 private fun NominalSelection(
     amounts: List<Long>,
     selectedAmount: Long?,
-    onAmountSelected: (Long) -> Unit
+    customAmount: String,
+    isCustomAmountSelected: Boolean,
+    onAmountSelected: (Long) -> Unit,
+    onCustomAmountChanged: (String) -> Unit
 ) {
     Column {
         Text(
             text = "Select Top Up Amount",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 12.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         LazyVerticalGrid(
             columns = GridCells.Fixed(3),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.height(112.dp)
         ) {
             items(amounts) { amount ->
-                val isSelected = amount == selectedAmount
+                val isSelected = (amount == selectedAmount) && !isCustomAmountSelected
                 OutlinedButton(
                     onClick = { onAmountSelected(amount) },
                     shape = MaterialTheme.shapes.medium,
@@ -214,13 +237,34 @@ private fun NominalSelection(
                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     } else {
-                        ButtonDefaults.outlinedButtonColors()
+                        ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
                     }
                 ) {
-                    Text(text = formatCurrency(amount, true), color = AppSecondaryColor)
+                    Text(text = formatCurrency(amount, true))
                 }
             }
         }
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
+            value = customAmount,
+            onValueChange = onCustomAmountChanged,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Or enter other amount") },
+            prefix = { Text("IDR ", color = MaterialTheme.colorScheme.onPrimary) },
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            singleLine = true,
+            shape = MaterialTheme.shapes.large,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                focusedContainerColor = MaterialTheme.colorScheme.surface
+            )
+        )
     }
 }
 
@@ -235,12 +279,13 @@ private fun PaymentMethodSelection(
             text = "Select Payment Method",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 8.dp)
+            modifier = Modifier.padding(bottom = 12.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         ) {
             Column(Modifier.selectableGroup()) {
                 methods.forEachIndexed { index, method ->
@@ -248,7 +293,6 @@ private fun PaymentMethodSelection(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp)
-                            .background(AppTextColorOnDark)
                             .selectable(
                                 selected = (method == selectedMethod),
                                 onClick = { onPaymentMethodSelected(method) },
@@ -259,16 +303,21 @@ private fun PaymentMethodSelection(
                     ) {
                         RadioButton(
                             selected = (method == selectedMethod),
-                            onClick = null // null recommended for accessibility with selectable
+                            onClick = null,
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.background)
                         )
                         Text(
                             text = method,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp)
+                            modifier = Modifier.padding(start = 16.dp),
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     if (index < methods.lastIndex) {
-                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 56.dp, end = 16.dp),
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     }
                 }
             }
@@ -276,65 +325,35 @@ private fun PaymentMethodSelection(
     }
 }
 
-
-// --- Layar Tambahan (Processing & Success) ---
-
 @Composable
-private fun ProcessingScreen() {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            // WARNA DISESUAIKAN: Gunakan warna sekunder yang lebih gelap
-            .background(AppSecondaryColor),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator(color = Color.White)
-            Spacer(modifier = Modifier.height(24.dp))
-            Text("Processing Payment", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Color.White)
-            Text("Please wait a moment...", fontSize = 16.sp, color = Color.White.copy(alpha = 0.8f))
-        }
-    }
-}
-
-@Composable
-private fun SuccessScreen(onDoneClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            // WARNA DISESUAIKAN: Gunakan warna primer untuk nuansa yang positif
-            .background(AppPrimaryColor),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
-            Text("✅", fontSize = 80.sp)
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                "Top Up Successful",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                textAlign = TextAlign.Center
+private fun ProcessingDialog() {
+    Dialog(onDismissRequest = { /* Do nothing, user can't dismiss */ }) {
+        Card(
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
             )
-            Spacer(modifier = Modifier.height(32.dp))
-            Button(
-                onClick = onDoneClick,
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(50),
-                // WARNA DISESUAIKAN: Tombol dengan warna kontras
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AppScreenBackground,
-                    contentColor = AppPrimaryColor
-                )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
-                Text("Done", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(50.dp),
+                    color = Color.White,
+                    strokeWidth = 5.dp
+                )
+                Spacer(modifier = Modifier.width(20.dp))
+                Text(
+                    "Processing Payment...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
     }
 }
-// --- Fungsi utilitas ---
+
 private fun formatCurrency(amount: Long, short: Boolean = false): String {
     val format = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     format.maximumFractionDigits = 0
@@ -346,14 +365,17 @@ private fun formatCurrency(amount: Long, short: Boolean = false): String {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "TopUp Screen")
 @Composable
 private fun TopUpScreenPreview() {
-    TopUpContent(
-        state = TopUpState(),
-        onBackClick = {},
-        onAmountSelected = {},
-        onPaymentMethodSelected = {},
-        onPayClick = {}
-    )
+    LaundryGoTheme(darkTheme = false) {
+        TopUpContent(
+            state = TopUpState(selectedAmount = 50000),
+            onBackClick = {},
+            onAmountSelected = {},
+            onCustomAmountChanged = {},
+            onPaymentMethodSelected = {},
+            onPayClick = {}
+        )
+    }
 }
