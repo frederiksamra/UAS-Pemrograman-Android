@@ -38,7 +38,8 @@ fun DashboardScreen(
     onNavigateToCart: () -> Unit = {},
     onNavigateToVoucher: () -> Unit = {},
     onNavigateToTopUp: () -> Unit = {},
-    onNavigateToProfile: () -> Unit = {}
+    onNavigateToProfile: () -> Unit = {},
+    onNavigateToHistory: () -> Unit = {}
 ) {
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
@@ -57,7 +58,8 @@ fun DashboardScreen(
         onNavigateToCart = onNavigateToCart,
         onNavigateToVoucher = onNavigateToVoucher,
         onNavigateToTopUp = onNavigateToTopUp,
-        onNavigateToProfile = onNavigateToProfile
+        onNavigateToProfile = onNavigateToProfile,
+        onNavigateToHistory = onNavigateToHistory
     )
 }
 
@@ -75,7 +77,8 @@ private fun DashboardScreenContent(
     onNavigateToCart: () -> Unit,
     onNavigateToVoucher: () -> Unit,
     onNavigateToTopUp: () -> Unit,
-    onNavigateToProfile: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onNavigateToHistory: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -114,6 +117,7 @@ private fun DashboardScreenContent(
                 "voucher" -> onNavigateToVoucher()
                 // Logika when ini sudah benar, masalahnya ada di daftar fitur
                 "top_up" -> onNavigateToTopUp()
+                "history" -> onNavigateToHistory()
                 else -> onFeatureClick(featureId)
             }
         })
@@ -411,7 +415,8 @@ fun DashboardScreenPreview() {
             onNavigateToCart = {},
             onNavigateToVoucher = {},
             onNavigateToTopUp = {},
-            onNavigateToProfile = {}
+            onNavigateToProfile = {},
+            onNavigateToHistory = {}
         )
     }
 }
@@ -434,7 +439,8 @@ fun DashboardScreenErrorPreview() {
             onNavigateToCart = {},
             onNavigateToVoucher = {},
             onNavigateToTopUp = {},
-            onNavigateToProfile = {}
+            onNavigateToProfile = {},
+            onNavigateToHistory = {}
         )
     }
 }

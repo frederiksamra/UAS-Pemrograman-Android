@@ -23,6 +23,8 @@ import com.android.laundrygo.ui.screens.ShirtPantsScreen
 import com.android.laundrygo.ui.screens.ShoesScreen
 import com.android.laundrygo.ui.screens.SpecialTreatmentScreen
 import com.android.laundrygo.ui.screens.VoucherScreen
+import com.android.laundrygo.ui.screens.HistoryScreen
+import com.android.laundrygo.ui.screens.HistoryDetailScreen
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.android.laundrygo.ui.screens.TopUpScreen
 import com.android.laundrygo.viewmodel.ProfileViewModel
@@ -87,7 +89,8 @@ fun AppNavigationGraph() {
                 onNavigateToCart = {navController.navigate(Screen.Cart.route)},
                 onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) },
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
-                onNavigateToTopUp = { navController.navigate(Screen.TopUp.route) }
+                onNavigateToTopUp = { navController.navigate(Screen.TopUp.route) },
+                onNavigateToHistory = { navController.navigate(Screen.History.route) }
             )
         }
 
@@ -226,5 +229,26 @@ fun AppNavigationGraph() {
                 }
             )
         }
+        // Rute untuk HistoryScreen
+        composable(route = Screen.History.route) {
+            HistoryScreen(
+                onBack = { navController.navigateUp() },
+                onCheckClick = { orderId ->
+                    navController.navigate(Screen.HistoryDetail.createRoute(orderId))
+                }
+            )
+        }
+
+        composable(route = Screen.HistoryDetail.route) { backStackEntry ->
+
+        val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            HistoryDetailScreen(
+                orderId = orderId,
+                onBack = { navController.navigateUp() }
+            )
+        }
+
+
+
     }
 }
