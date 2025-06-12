@@ -16,4 +16,9 @@ sealed class Screen(val route: String) {
     data object Voucher : Screen("voucher_screen")
     data object TopUp : Screen("top_up_screen")
     data object Profile : Screen("profile_screen")
+    data object History : Screen("history_screen")
+    object HistoryDetail : Screen("history_detail/{orderId}") {
+        fun createRoute(orderId: String) = "history_detail/$orderId"
+    }
+
 }
