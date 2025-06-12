@@ -37,7 +37,8 @@ fun DashboardScreen(
     onNavigateToLocation: () -> Unit = {},
     onNavigateToCart: () -> Unit = {},
     onNavigateToVoucher: () -> Unit = {},
-    onNavigateToTopUp: () -> Unit = {}
+    onNavigateToTopUp: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
@@ -55,7 +56,8 @@ fun DashboardScreen(
         onNavigateToLocation = onNavigateToLocation,
         onNavigateToCart = onNavigateToCart,
         onNavigateToVoucher = onNavigateToVoucher,
-        onNavigateToTopUp = onNavigateToTopUp
+        onNavigateToTopUp = onNavigateToTopUp,
+        onNavigateToProfile = onNavigateToProfile
     )
 }
 
@@ -72,8 +74,8 @@ private fun DashboardScreenContent(
     onNavigateToLocation: () -> Unit,
     onNavigateToCart: () -> Unit,
     onNavigateToVoucher: () -> Unit,
-    onNavigateToTopUp: () -> Unit
-
+    onNavigateToTopUp: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -85,7 +87,8 @@ private fun DashboardScreenContent(
             userName = userName,
             userBalance = userBalance,
             onSearchClick = onSearchClick,
-            onTopUpClick = onTopUpClick
+            onTopUpClick = onTopUpClick,
+            onNavigateToProfile = onNavigateToProfile
         )
 
         error?.let {
@@ -123,7 +126,8 @@ private fun HeaderSection(
     userName: String,
     userBalance: String,
     onSearchClick: () -> Unit,
-    onTopUpClick: () -> Unit
+    onTopUpClick: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -171,7 +175,8 @@ private fun HeaderSection(
                     modifier = Modifier
                         .size(62.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) // DIUBAH
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .clickable { onNavigateToProfile() }
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
@@ -393,8 +398,6 @@ data class FeatureItem(val name: String, val icon: IconType, val id: String)
 @Composable
 fun DashboardScreenPreview() {
     LaundryGoTheme {
-        // JANGAN PANGGIL DashboardScreen() di sini karena ia memanggil viewModel()
-        // PANGGIL DashboardScreenContent() dan berikan data palsu
         DashboardScreenContent(
             userName = "Saoirse",
             userBalance = "1.500.000",
@@ -407,7 +410,8 @@ fun DashboardScreenPreview() {
             onNavigateToLocation = {},
             onNavigateToCart = {},
             onNavigateToVoucher = {},
-            onNavigateToTopUp = {}
+            onNavigateToTopUp = {},
+            onNavigateToProfile = {}
         )
     }
 }
@@ -429,7 +433,8 @@ fun DashboardScreenErrorPreview() {
             onNavigateToLocation = {},
             onNavigateToCart = {},
             onNavigateToVoucher = {},
-            onNavigateToTopUp = {}
+            onNavigateToTopUp = {},
+            onNavigateToProfile = {}
         )
     }
 }

@@ -18,6 +18,11 @@ private val LightColorScheme = lightColorScheme(
     onPrimary = White,
     primaryContainer = Cream,
     onPrimaryContainer = BlackText,
+
+    // --- BAGIAN INI DIUBAH ---
+    secondary = LightSteelBlue, // Latar belakang profil sekarang biru muda
+    onSecondary = DarkBlue,     // Teks & ikon di atasnya tetap Biru Tua
+
     background = White,
     onBackground = DarkBlueText,
     surface = DarkBlue,

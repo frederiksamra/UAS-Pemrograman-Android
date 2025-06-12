@@ -1,6 +1,9 @@
 package com.android.laundrygo.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -13,13 +16,16 @@ import com.android.laundrygo.ui.screens.DollScreen
 import com.android.laundrygo.ui.screens.LocationScreen
 import com.android.laundrygo.ui.screens.StartScreen
 import com.android.laundrygo.ui.screens.LoginScreen
+import com.android.laundrygo.ui.screens.ProfileScreen
 import com.android.laundrygo.ui.screens.RegisterScreen
 import com.android.laundrygo.ui.screens.ServiceTypeScreen
 import com.android.laundrygo.ui.screens.ShirtPantsScreen
 import com.android.laundrygo.ui.screens.ShoesScreen
 import com.android.laundrygo.ui.screens.SpecialTreatmentScreen
-import com.android.laundrygo.ui.screens.TopUpScreen
 import com.android.laundrygo.ui.screens.VoucherScreen
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import com.android.laundrygo.ui.screens.TopUpScreen
+import com.android.laundrygo.viewmodel.ProfileViewModel
 
 @Composable
 fun AppNavigationGraph() {
@@ -80,10 +86,15 @@ fun AppNavigationGraph() {
                 onNavigateToLocation = { navController.navigate(Screen.Location.route) },
                 onNavigateToCart = {navController.navigate(Screen.Cart.route)},
                 onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) },
+                onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onNavigateToTopUp = { navController.navigate(Screen.TopUp.route) }
-                // Di sini Anda bisa menambahkan parameter navigasi dari dashboard
-                // ke layar lain, contohnya:
-                // onNavigateToProfile = { navController.navigate("profile") }
+            )
+        }
+
+        // Rute untuk TopUp
+        composable(route = Screen.TopUp.route) {
+            TopUpScreen(
+                onBackClick = { navController.navigateUp() }
             )
         }
 
@@ -143,14 +154,6 @@ fun AppNavigationGraph() {
 
             )
         }
-
-        // Rute untuk TopUp
-        composable(route = Screen.TopUp.route) {
-            TopUpScreen(
-                onBackClick = { navController.navigateUp() }
-            )
-        }
-
         // Rute untuk Cart
         composable(route = Screen.Cart.route) {
             // Membuat instance ViewModel yang terikat pada tujuan navigasi ini
@@ -166,11 +169,46 @@ fun AppNavigationGraph() {
             )
         }
 
-        // Rute untuk VoucherScreen (BARU)
+        // Rute untuk VoucherScreen
         composable(route = Screen.Voucher.route) {
             VoucherScreen(
                 onBackClick = {
                     navController.navigateUp() // Aksi untuk kembali ke layar sebelumnya
+                }
+            )
+        }
+
+        // Rute untuk ProfileScreen
+        composable(route = Screen.Profile.route) {
+            // DITAMBAHKAN: Ambil instance ViewModel untuk mengakses state
+            val viewModel: ProfileViewModel = viewModel()
+            val isEditMode by viewModel.isEditMode.collectAsState()
+
+            // DITAMBAHKAN: Menangani tombol kembali dari sistem (system back-press)
+            // Handler ini hanya aktif jika isEditMode == true
+            BackHandler(enabled = isEditMode) {
+                // Jika pengguna menekan kembali saat mengedit,
+                // batalkan mode edit, jangan keluar dari layar.
+                viewModel.onCancelEdit()
+            }
+
+            ProfileScreen(
+                // viewModel diteruskan agar BackHandler dan ProfileScreen
+                // menggunakan instance yang sama.
+                viewModel = viewModel,
+                onNavigateBack = {
+                    // Aksi ini hanya akan terpanggil dari dalam ProfileScreen
+                    // jika TIDAK dalam mode edit.
+                    navController.navigateUp()
+                },
+                onLogout = {
+                    // Aksi setelah logout berhasil (tidak berubah)
+                    navController.navigate(Screen.Start.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
                 }
             )
         }

@@ -15,4 +15,5 @@ sealed class Screen(val route: String) {
     data object Cart : Screen("cart_screen")
     data object Voucher : Screen("voucher_screen")
     data object TopUp : Screen("top_up_screen")
+    data object Profile : Screen("profile_screen")
 }
