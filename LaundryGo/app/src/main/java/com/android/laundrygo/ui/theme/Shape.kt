@@ -1,4 +1,4 @@
-package com.android.laundrygo.ui.theme // Sesuaikan dengan package Anda
+package com.android.laundrygo.ui.theme
 
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes

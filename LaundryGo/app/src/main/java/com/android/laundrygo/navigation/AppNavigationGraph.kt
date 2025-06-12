@@ -101,14 +101,18 @@ fun AppNavigationGraph() {
         // Rute untuk Bag
         composable(route = Screen.Bag.route) {
             BagScreen(
-                onBack = { navController.navigateUp() }
+                onBack = { navController.navigateUp() },
+                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onAddClick = TODO()
             )
         }
 
         // Rute untuk Doll
         composable(route = Screen.Doll.route) {
             DollScreen(
-                onBack = { navController.navigateUp() }
+                onBack = { navController.navigateUp() },
+                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onAddClick = TODO()
             )
         }
 
@@ -123,26 +127,35 @@ fun AppNavigationGraph() {
         composable(route = Screen.ServiceType.route) {
             ServiceTypeScreen(
                 onBack = { navController.navigateUp() },
-                onBag = { navController.navigate(Screen.Bag.route) },
-                onDoll = { navController.navigate(Screen.Doll.route) },
-                onShirtPants = { navController.navigate(Screen.ShirtPants.route) },
-                onShoes = { navController.navigate(Screen.Shoes.route) },
-                onSpecialTreatment = { navController.navigate(Screen.SpecialTreatment.route) }
-
+                // Kita gunakan satu callback onServiceSelected
+                onServiceSelected = { serviceName ->
+                    // Gunakan 'when' untuk menentukan navigasi berdasarkan nama layanan yang diterima
+                    when (serviceName) {
+                        "Pakaian Harian" -> navController.navigate(Screen.ShirtPants.route)
+                        "Perawatan Khusus" -> navController.navigate(Screen.SpecialTreatment.route)
+                        "Boneka" -> navController.navigate(Screen.Doll.route)
+                        "Tas" -> navController.navigate(Screen.Bag.route)
+                        "Sepatu" -> navController.navigate(Screen.Shoes.route)
+                    }
+                }
             )
         }
 
         // Rute untuk ShirtPants
         composable(route = Screen.ShirtPants.route) {
             ShirtPantsScreen(
-                onBack = { navController.navigateUp() }
+                onBack = { navController.navigateUp() },
+                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onAddClick = TODO()
             )
         }
 
         // Rute untuk Shoes
         composable(route = Screen.Shoes.route) {
             ShoesScreen(
-                onBack = { navController.navigateUp() }
+                onBack = { navController.navigateUp() },
+                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onAddClick = TODO()
 
             )
         }
@@ -150,8 +163,9 @@ fun AppNavigationGraph() {
         // Rute untuk SpecialTreatment
         composable(route = Screen.SpecialTreatment.route) {
             SpecialTreatmentScreen(
-                onBack = { navController.navigateUp() }
-
+                onBack = { navController.navigateUp() },
+                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onAddClick = TODO()
             )
         }
         // Rute untuk Cart

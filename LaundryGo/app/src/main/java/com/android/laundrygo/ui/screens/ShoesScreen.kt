@@ -1,9 +1,10 @@
 package com.android.laundrygo.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
@@ -11,62 +12,40 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.tooling.preview.Preview
-import com.android.laundrygo.R
+import androidx.compose.ui.unit.dp
+import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.DarkBlueText
-import com.android.laundrygo.ui.theme.White
+import com.android.laundrygo.ui.theme.LaundryGoTheme
+
+data class ShoesService(
+    val title: String,
+    val price: String
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoesScreen(
-    onBack: () -> Unit = {},
-    onAddClick: (String) -> Unit = {},
-    onCartClick: () -> Unit = {}
+    onBack: () -> Unit,
+    onAddClick: (String) -> Unit,
+    onCartClick: () -> Unit
 ) {
-    val blue = DarkBlueText
-    val cream = Color(0xFFFFFDE7)
-    val grey = Color(0xFFF5F5F5)
-    val cards = listOf(
-        ShoesServiceCardData(
-            title = "Deep Cleaning Shoes",
-            price = "IDR 60.000/Pair of shoes",
-            backgroundColor = grey,
-            titleSize = 20.sp
-        ),
-        ShoesServiceCardData(
-            title = "Premium Cleaning + Unyellowing",
-            price = "IDR 80.000/Pair of shoes",
-            backgroundColor = cream,
-            titleSize = 18.sp
-        ),
-        ShoesServiceCardData(
-            title = "Fast Cleaning Shoes",
-            price = "IDR 20.000/Pair of shoes",
-            backgroundColor = grey,
-            titleSize = 20.sp
-        )
+    val services = listOf(
+        ShoesService("Deep Cleaning Shoes", "IDR 60.000/Pasang"),
+        ShoesService("Premium Cleaning + Unyellowing", "IDR 80.000/Pasang"),
+        ShoesService("Fast Cleaning Shoes", "IDR 20.000/Pasang")
     )
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "Shoes",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = White
-                    )
-                },
+                title = { Text("Sepatu") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            painter = painterResource(R.drawable.ic_black),
-                            contentDescription = "Back"
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali"
                         )
                     }
                 },
@@ -74,35 +53,34 @@ fun ShoesScreen(
                     IconButton(onClick = onCartClick) {
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "Cart",
-                            tint = White,
-                            modifier = Modifier.size(32.dp)
+                            contentDescription = "Keranjang"
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkBlue
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         },
-        containerColor = grey
-    ) { padding ->
-        Column(
+        containerColor = Color.White
+    ) { innerPadding ->
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
-                .padding(top = 16.dp),
-            verticalArrangement = Arrangement.Top,
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(innerPadding),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            cards.forEach { card ->
+            // Menggunakan itemsIndexed untuk membuat warna selang-seling
+            itemsIndexed(services) { index, service ->
+                val cardColor = if (index % 2 == 0) DarkBlue else Cream
                 ShoesServiceCard(
-                    title = card.title,
-                    price = card.price,
-                    backgroundColor = card.backgroundColor,
-                    textColor = blue,
-                    titleSize = card.titleSize,
-                    onAddClick = { onAddClick(card.title) }
+                    service = service,
+                    containerColor = cardColor,
+                    onAddClick = { onAddClick(service.title) }
                 )
             }
         }
@@ -110,68 +88,83 @@ fun ShoesScreen(
 }
 
 @Composable
-fun ShoesServiceCard(
-    title: String,
-    price: String,
-    backgroundColor: Color,
-    textColor: Color,
-    titleSize: androidx.compose.ui.unit.TextUnit,
+private fun ShoesServiceCard(
+    service: ShoesService,
+    containerColor: Color,
     onAddClick: () -> Unit
 ) {
+    // Logika pewarnaan dinamis yang sama seperti sebelumnya
+    val isCreamCard = containerColor == Cream
+    val textColor = if (isCreamCard) MaterialTheme.colorScheme.primary else Color.White
+    val priceColor = if (isCreamCard) MaterialTheme.colorScheme.primary else Color.White
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 0.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(8.dp),
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.large,
         colors = CardDefaults.cardColors(
-            containerColor = backgroundColor
+            containerColor = containerColor
         ),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(backgroundColor)
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                // Ukuran font judul sekarang konsisten menggunakan style dari tema
                 Text(
-                    text = title,
-                    color = textColor,
-                    fontSize = titleSize,
-                    fontWeight = FontWeight.Bold
+                    text = service.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
                 )
-                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = price,
-                    color = textColor,
-                    fontSize = 16.sp
+                    text = service.price,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = priceColor
                 )
             }
-            IconButton(
+            Spacer(modifier = Modifier.width(16.dp))
+
+            val buttonColors = if(isCreamCard) {
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            } else {
+                ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            FilledTonalButton(
                 onClick = onAddClick,
-                modifier = Modifier
-                    .size(40.dp)
+                colors = buttonColors,
+                contentPadding = PaddingValues(12.dp),
+                shape = MaterialTheme.shapes.medium
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
-                    contentDescription = "Add",
-                    tint = textColor,
-                    modifier = Modifier.size(32.dp)
+                    contentDescription = "Tambah ${service.title}"
                 )
             }
         }
     }
 }
 
-data class ShoesServiceCardData(val title: String, val price: String, val backgroundColor: Color, val titleSize: androidx.compose.ui.unit.TextUnit)
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "ShoesScreen")
 @Composable
 fun ShoesScreenPreview() {
-    ShoesScreen()
+    LaundryGoTheme {
+        ShoesScreen({}, {}, {})
+    }
 }
-
