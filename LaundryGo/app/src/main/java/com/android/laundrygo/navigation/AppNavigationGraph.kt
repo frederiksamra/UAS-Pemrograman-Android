@@ -18,6 +18,7 @@ import com.android.laundrygo.ui.screens.ServiceTypeScreen
 import com.android.laundrygo.ui.screens.ShirtPantsScreen
 import com.android.laundrygo.ui.screens.ShoesScreen
 import com.android.laundrygo.ui.screens.SpecialTreatmentScreen
+import com.android.laundrygo.ui.screens.TopUpScreen
 import com.android.laundrygo.ui.screens.VoucherScreen
 
 @Composable
@@ -78,7 +79,8 @@ fun AppNavigationGraph() {
                 onNavigateToServiceType = { navController.navigate(Screen.ServiceType.route) },
                 onNavigateToLocation = { navController.navigate(Screen.Location.route) },
                 onNavigateToCart = {navController.navigate(Screen.Cart.route)},
-                onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) }
+                onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) },
+                onNavigateToTopUp = { navController.navigate(Screen.TopUp.route) }
                 // Di sini Anda bisa menambahkan parameter navigasi dari dashboard
                 // ke layar lain, contohnya:
                 // onNavigateToProfile = { navController.navigate("profile") }
@@ -141,6 +143,14 @@ fun AppNavigationGraph() {
 
             )
         }
+
+        // Rute untuk TopUp
+        composable(route = Screen.TopUp.route) {
+            TopUpScreen(
+                onBackClick = { navController.navigateUp() }
+            )
+        }
+
         // Rute untuk Cart
         composable(route = Screen.Cart.route) {
             // Membuat instance ViewModel yang terikat pada tujuan navigasi ini

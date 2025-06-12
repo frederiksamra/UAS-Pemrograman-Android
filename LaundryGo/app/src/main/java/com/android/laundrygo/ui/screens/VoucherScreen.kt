@@ -8,8 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,15 +18,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.ui.theme.LaundryGoTheme
+import com.android.laundrygo.viewmodel.VoucherViewModel
 
-// Warna kustom berdasarkan gambar yang Anda berikan
+// Definisi warna dan data class tidak berubah
 val VOUCHER_PROMO_BG = Color(0xFF515886)
 val VOUCHER_PROMO_TEXT = Color(0xFFE8E4D9)
 val VOUCHER_CLAIM_BUTTON_BG = Color(0xFF6F65A8)
-val SCREEN_BACKGROUND = Color(0xFFF8F7FC) 
+val SCREEN_BACKGROUND = Color(0xFFF8F7FC)
 
-// Data class (tidak berubah)
 data class VoucherInfo(
     val id: Int,
     val title: String,
@@ -37,14 +37,30 @@ data class VoucherInfo(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoucherScreen(
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    // ================== PERUBAHAN DI SINI ==================
+    // Nama parameter diubah dari 'viewModel' menjadi 'voucherViewModel' untuk menghindari konflik.
+    voucherViewModel: VoucherViewModel = viewModel()
+    // =======================================================
 ) {
-    val vouchers = remember {
-        listOf(
-            VoucherInfo(1, "10% off entire order", "Monday, 9 March 2024"),
-            VoucherInfo(2, "10% off entire order", "Monday, 9 March 2024"),
-            VoucherInfo(3, "10% off entire order", "Monday, 9 March 2024")
-        )
+    // Mengumpulkan (collect) state dari ViewModel
+    // ================== PERUBAHAN DI SINI ==================
+    // Gunakan nama parameter yang baru.
+    val vouchers by voucherViewModel.vouchers.collectAsState()
+    val isLoading by voucherViewModel.isLoading.collectAsState()
+    val error by voucherViewModel.error.collectAsState()
+    // =======================================================
+
+    // State untuk Snackbar (notifikasi)
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Mendengarkan event dari ViewModel untuk menampilkan Snackbar
+    LaunchedEffect(Unit) {
+        // ================== PERUBAHAN DI SINI ==================
+        voucherViewModel.claimStatus.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+        // =======================================================
     }
 
     Scaffold(
@@ -61,62 +77,72 @@ fun VoucherScreen(
                 }
             )
         },
-        // WARNA KUSTOM: Latar belakang utama layar
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = SCREEN_BACKGROUND
     ) { paddingValues ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            contentAlignment = Alignment.Center
         ) {
-            items(vouchers, key = { it.id }) { voucher ->
-                VoucherCard(
-                    voucher = voucher,
-                    onClaimClick = { /* Handle claim logic */ }
-                )
+            if (isLoading) {
+                CircularProgressIndicator()
+            } else if (error != null) {
+                Text(text = error!!, color = MaterialTheme.colorScheme.error)
+            } else if (vouchers.isEmpty()) {
+                Text(text = "Tidak ada voucher yang tersedia saat ini.")
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    items(vouchers, key = { it.id }) { voucher ->
+                        VoucherCard(
+                            voucher = voucher,
+                            // ================== PERUBAHAN DI SINI ==================
+                            onClaimClick = { voucherViewModel.claimVoucher(voucher.id) }
+                            // =======================================================
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+
+// Composable VoucherCard tidak perlu diubah
 @Composable
 fun VoucherCard(
     voucher: VoucherInfo,
     onClaimClick: () -> Unit
 ) {
+    // ... isi kode VoucherCard sama seperti sebelumnya ...
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(
-            // Warna latar kartu, bisa juga diubah jika mau
-            containerColor = Color.White
-        )
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Bagian atas untuk promosi
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    // WARNA KUSTOM: Latar belakang area promo
                     .background(VOUCHER_PROMO_BG)
                     .padding(horizontal = 20.dp, vertical = 32.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = voucher.title,
-                    // WARNA KUSTOM: Teks di area promo
                     color = VOUCHER_PROMO_TEXT,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
             }
-
-            // Bagian bawah untuk tanggal dan tombol
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -127,16 +153,14 @@ fun VoucherCard(
                 Text(
                     text = voucher.expiryDate,
                     style = MaterialTheme.typography.bodyMedium,
-                    // Anda juga bisa mengubah warna ini jika perlu
                     color = Color.Gray
                 )
                 Button(
                     onClick = onClaimClick,
                     shape = MaterialTheme.shapes.small,
-                    // WARNA KUSTOM: Warna tombol "Claim"
                     colors = ButtonDefaults.buttonColors(
                         containerColor = VOUCHER_CLAIM_BUTTON_BG,
-                        contentColor = Color.White // Teks tombol dibuat putih agar kontras
+                        contentColor = Color.White
                     )
                 ) {
                     Text(text = "Claim", fontWeight = FontWeight.SemiBold)
@@ -146,7 +170,8 @@ fun VoucherCard(
     }
 }
 
-@Preview(showBackground = true, widthDp = 360, heightDp = 800)
+
+@Preview(showBackground = true)
 @Composable
 private fun VoucherScreenPreview() {
     LaundryGoTheme {
