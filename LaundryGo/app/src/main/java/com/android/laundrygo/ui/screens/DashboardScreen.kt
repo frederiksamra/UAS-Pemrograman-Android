@@ -36,26 +36,26 @@ fun DashboardScreen(
     onNavigateToServiceType: () -> Unit = {},
     onNavigateToLocation: () -> Unit = {},
     onNavigateToCart: () -> Unit = {},
-    onNavigateToVoucher: () -> Unit = {}
+    onNavigateToVoucher: () -> Unit = {},
+    onNavigateToTopUp: () -> Unit = {}
 ) {
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
     val error by viewModel.error.observeAsState()
 
-    // Screen sekarang tidak lagi membungkus dirinya dengan Theme,
-    // karena Theme akan diterapkan dari level yang lebih tinggi (MainActivity).
     DashboardScreenContent(
         userName = userName,
         userBalance = userBalance,
         error = error,
-        onTopUpClick = { viewModel.openTopUpScreen() },
+        onTopUpClick = onNavigateToTopUp,
         onSearchClick = { /* Handle search */ },
-        onFeatureClick = { feature -> /* Handle feature clicks */ },
+        onFeatureClick = { feature -> /* Handle feature clicks, ini akan ditangani di bawah */ },
         onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
         onNavigateToServiceType = onNavigateToServiceType,
         onNavigateToLocation = onNavigateToLocation,
         onNavigateToCart = onNavigateToCart,
-        onNavigateToVoucher = onNavigateToVoucher
+        onNavigateToVoucher = onNavigateToVoucher,
+        onNavigateToTopUp = onNavigateToTopUp
     )
 }
 
@@ -71,13 +71,14 @@ private fun DashboardScreenContent(
     onNavigateToServiceType: () -> Unit,
     onNavigateToLocation: () -> Unit,
     onNavigateToCart: () -> Unit,
-    onNavigateToVoucher: () -> Unit
+    onNavigateToVoucher: () -> Unit,
+    onNavigateToTopUp: () -> Unit
 
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background) // DIUBAH
+            .background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState())
     ) {
         HeaderSection(
@@ -108,7 +109,8 @@ private fun DashboardScreenContent(
                 "nearest_location" -> onNavigateToLocation()
                 "cart" -> onNavigateToCart()
                 "voucher" -> onNavigateToVoucher()
-
+                // Logika when ini sudah benar, masalahnya ada di daftar fitur
+                "top_up" -> onNavigateToTopUp()
                 else -> onFeatureClick(featureId)
             }
         })
@@ -259,7 +261,8 @@ private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
             FeatureItem("Nearest LaundryGo", IconType.DrawableResource(R.drawable.location), "nearest_location"),
             FeatureItem("In Process", IconType.DrawableResource(R.drawable.in_process), "in_process"),
             FeatureItem("Your Voucher", IconType.DrawableResource(R.drawable.voucher), "voucher"),
-            FeatureItem("History", IconType.ImageVectorIcon(Icons.Default.History), "history")
+            FeatureItem("History", IconType.ImageVectorIcon(Icons.Default.History), "history"),
+            FeatureItem("Top Up", IconType.ImageVectorIcon(Icons.Default.AccountBalanceWallet), "top_up")
         )
 
         LazyRow(
@@ -403,7 +406,8 @@ fun DashboardScreenPreview() {
             onNavigateToServiceType = {},
             onNavigateToLocation = {},
             onNavigateToCart = {},
-            onNavigateToVoucher = {}
+            onNavigateToVoucher = {},
+            onNavigateToTopUp = {}
         )
     }
 }
@@ -424,7 +428,8 @@ fun DashboardScreenErrorPreview() {
             onNavigateToServiceType = {},
             onNavigateToLocation = {},
             onNavigateToCart = {},
-            onNavigateToVoucher = {}
+            onNavigateToVoucher = {},
+            onNavigateToTopUp = {}
         )
     }
 }
