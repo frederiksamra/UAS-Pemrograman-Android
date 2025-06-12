@@ -1,22 +1,22 @@
 package com.android.laundrygo.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -25,8 +25,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.ui.theme.Cream
+import com.android.laundrygo.ui.theme.DarkBlue
 import com.android.laundrygo.ui.theme.LaundryGoTheme
-import com.android.laundrygo.ui.theme.White
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -43,7 +43,6 @@ data class CartItem(
     var quantity: Int
 )
 
-// --- ViewModel untuk Mengelola State CartScreen ---
 class CartViewModel : ViewModel() {
 
     private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
@@ -60,7 +59,8 @@ class CartViewModel : ViewModel() {
     private fun loadDummyItems() {
         _cartItems.value = listOf(
             CartItem(1, "Deep Cleaning", "Cuci Kering + Setrika", 12000.0, 2),
-            CartItem(2, "special Long Dress", "", 27000.0, 1),
+            CartItem(2, "Special Long Dress", "Perawatan khusus gaun", 27000.0, 1),
+            CartItem(3, "King Package", "Cuci ekspres, setrika, antar jemput", 35000.0, 3)
         )
     }
 
@@ -84,14 +84,10 @@ class CartViewModel : ViewModel() {
     }
 
     fun checkout() {
-        // Logika untuk proses checkout
-        // Misalnya, membersihkan keranjang
         _cartItems.value = emptyList()
     }
 }
 
-
-// --- Composable Utama untuk CartScreen ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CartScreen(
@@ -108,24 +104,24 @@ fun CartScreen(
                 title = { Text("Keranjang Saya") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
         },
         bottomBar = {
             if (cartItems.isNotEmpty()) {
                 CheckoutBottomBar(totalPrice = totalPrice) {
-                    viewModel.checkout()
                     onCheckoutClick()
                 }
             }
-        }
+        },
+        containerColor = Color.White
     ) { paddingValues ->
         if (cartItems.isEmpty()) {
             EmptyCartView(modifier = Modifier.padding(paddingValues))
@@ -133,14 +129,15 @@ fun CartScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                contentPadding = PaddingValues(16.dp),
+                    .padding(paddingValues),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(cartItems, key = { it.id }) { item ->
-                    CartItemCard(
+                itemsIndexed(cartItems, key = { _, item -> item.id }) { index, item ->
+                    val cardColor = if (index % 2 == 0) DarkBlue else Cream
+                    CartListItem(
                         item = item,
+                        containerColor = cardColor,
                         onRemoveClick = { viewModel.removeItem(item.id) },
                         onQuantityChange = { change -> viewModel.updateQuantity(item.id, change) }
                     )
@@ -150,93 +147,95 @@ fun CartScreen(
     }
 }
 
-// --- Composable untuk Menampilkan Satu Item di Keranjang ---
 @Composable
-private fun CartItemCard(
+private fun CartListItem(
     item: CartItem,
+    containerColor: Color,
     onRemoveClick: () -> Unit,
     onQuantityChange: (Int) -> Unit
 ) {
+    val isCreamCard = containerColor == Cream
+    val contentColor = if (isCreamCard) MaterialTheme.colorScheme.primary else Color.White
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Cream)
+        shape = MaterialTheme.shapes.large,
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = item.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(text = item.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = formatCurrency(item.price), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                IconButton(onClick = onRemoveClick, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = "Hapus Item", tint = MaterialTheme.colorScheme.error)
+        ListItem(
+            headlineContent = { Text(item.name, fontWeight = FontWeight.SemiBold, color = contentColor) },
+            supportingContent = { Text(formatCurrency(item.price), color = contentColor.copy(alpha = 0.8f)) },
+            trailingContent = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    QuantitySelector(
+                        quantity = item.quantity,
+                        contentColor = contentColor,
+                        onQuantityChange = onQuantityChange
+                    )
+                    IconButton(onClick = onRemoveClick) {
+                        Icon(Icons.Default.Delete, contentDescription = "Hapus Item", tint = MaterialTheme.colorScheme.error)
+                    }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                QuantitySelector(
-                    quantity = item.quantity,
-                    onQuantityChange = onQuantityChange
-                )
-            }
-        }
+            },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+        )
     }
 }
 
-// --- Composable untuk Pilihan Kuantitas ---
 @Composable
-private fun QuantitySelector(quantity: Int, onQuantityChange: (Int) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 4.dp)
-    ) {
+private fun QuantitySelector(
+    quantity: Int,
+    contentColor: Color,
+    onQuantityChange: (Int) -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         IconButton(onClick = { onQuantityChange(-1) }, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Default.Remove, contentDescription = "Kurangi Kuantitas")
+            Icon(Icons.Default.Remove, "Kurangi Kuantitas", modifier = Modifier.size(20.dp), tint = contentColor)
         }
         Text(
             text = quantity.toString(),
-            modifier = Modifier.width(30.dp),
+            modifier = Modifier.width(28.dp),
             textAlign = TextAlign.Center,
-            fontWeight = FontWeight.Bold
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold,
+            color = contentColor
         )
         IconButton(onClick = { onQuantityChange(1) }, modifier = Modifier.size(28.dp)) {
-            Icon(Icons.Default.Add, contentDescription = "Tambah Kuantitas")
+            Icon(Icons.Default.Add, "Tambah Kuantitas", modifier = Modifier.size(20.dp), tint = contentColor)
         }
     }
 }
 
-// --- Composable untuk Tampilan Keranjang Kosong ---
 @Composable
 private fun EmptyCartView(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ShoppingCart,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.surfaceVariant
+            )
             Text(
                 text = "Keranjang Anda Kosong",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "Ayo mulai tambahkan layanan laundry!",
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
 
-// --- Composable untuk Bottom Bar Checkout ---
 @Composable
 private fun CheckoutBottomBar(totalPrice: Double, onCheckoutClick: () -> Unit) {
     Card(
@@ -258,20 +257,21 @@ private fun CheckoutBottomBar(totalPrice: Double, onCheckoutClick: () -> Unit) {
                     text = formatCurrency(totalPrice),
                     style = MaterialTheme.typography.headlineSmall.copy(fontSize = 20.sp),
                     fontWeight = FontWeight.ExtraBold,
-                    color = White
+                    // Warna diperbaiki agar kontras di latar terang
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
             Button(
                 onClick = onCheckoutClick,
                 modifier = Modifier
-                    .padding(12.dp),
+                    .padding(start = 12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Cream, // DIUBAH
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer // DIUBAH
+                    containerColor = Cream,
+                    contentColor = MaterialTheme.colorScheme.onSurface
                 ),
-                shape = MaterialTheme.shapes.small // DIUBAH
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text("Checkout", style = MaterialTheme.typography.titleMedium)
+                Text("Checkout", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -286,7 +286,7 @@ private fun formatCurrency(price: Double): String {
 }
 
 // --- Preview ---
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "Cart with Items")
 @Composable
 fun CartScreenPreview() {
     LaundryGoTheme {

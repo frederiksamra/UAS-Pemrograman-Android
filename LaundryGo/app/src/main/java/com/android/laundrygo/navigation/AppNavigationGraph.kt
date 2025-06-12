@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -27,15 +28,25 @@ import com.android.laundrygo.ui.screens.HistoryScreen
 import com.android.laundrygo.ui.screens.HistoryDetailScreen
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.android.laundrygo.ui.screens.TopUpScreen
+import com.android.laundrygo.ui.screens.TransactionScreen
 import com.android.laundrygo.viewmodel.ProfileViewModel
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import com.android.laundrygo.ui.theme.LaundryGoTheme
+import com.android.laundrygo.viewmodel.TransactionViewModel
+import androidx.lifecycle.ViewModelProvider
+import com.android.laundrygo.ui.screens.payment.PaymentScreen
+import com.android.laundrygo.viewmodel.PaymentViewModelFactory
 
 @Composable
 fun AppNavigationGraph() {
     val navController = rememberNavController()
 
+    val KEY_TOTAL_PRICE = "totalPrice"
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Start.route // Layar pertama yang dibuka
+        startDestination = Screen.Start.route
     ) {
         // Rute untuk StartScreen
         composable(route = Screen.Start.route) {
@@ -106,7 +117,7 @@ fun AppNavigationGraph() {
             BagScreen(
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
-                onAddClick = TODO()
+                onAddClick = {}
             )
         }
 
@@ -115,7 +126,7 @@ fun AppNavigationGraph() {
             DollScreen(
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
-                onAddClick = TODO()
+                onAddClick = {}
             )
         }
 
@@ -132,7 +143,6 @@ fun AppNavigationGraph() {
                 onBack = { navController.navigateUp() },
                 // Kita gunakan satu callback onServiceSelected
                 onServiceSelected = { serviceName ->
-                    // Gunakan 'when' untuk menentukan navigasi berdasarkan nama layanan yang diterima
                     when (serviceName) {
                         "Pakaian Harian" -> navController.navigate(Screen.ShirtPants.route)
                         "Perawatan Khusus" -> navController.navigate(Screen.SpecialTreatment.route)
@@ -149,7 +159,7 @@ fun AppNavigationGraph() {
             ShirtPantsScreen(
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
-                onAddClick = TODO()
+                onAddClick = {}
             )
         }
 
@@ -158,7 +168,7 @@ fun AppNavigationGraph() {
             ShoesScreen(
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
-                onAddClick = TODO()
+                onAddClick = {}
 
             )
         }
@@ -168,21 +178,68 @@ fun AppNavigationGraph() {
             SpecialTreatmentScreen(
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
-                onAddClick = TODO()
+                onAddClick = {}
             )
         }
+
         // Rute untuk Cart
         composable(route = Screen.Cart.route) {
-            // Membuat instance ViewModel yang terikat pada tujuan navigasi ini
             val cartViewModel: CartViewModel = viewModel()
+            // Sebaiknya gunakan .collectAsState() jika totalPrice adalah StateFlow
+            val totalPrice = cartViewModel.totalPrice
+
             CartScreen(
                 viewModel = cartViewModel,
                 onBack = { navController.navigateUp() },
                 onCheckoutClick = {
-                    // Setelah checkout, kembali ke layar sebelumnya (Dashboard)
-                    // Anda juga bisa navigasi ke layar "Pesanan Berhasil" di sini
-                    navController.popBackStack()
+                    navController.navigate("${Screen.Transaction.route}/$totalPrice")
                 }
+            )
+        }
+
+        // Rute untuk Transaction Screen
+        composable(
+            route = "${Screen.Transaction.route}/{$KEY_TOTAL_PRICE}",
+            arguments = listOf(navArgument(KEY_TOTAL_PRICE) { type = NavType.FloatType })
+        ) { backStackEntry ->
+            val price = backStackEntry.arguments?.getFloat(KEY_TOTAL_PRICE) ?: 0f
+            val transactionViewModel: TransactionViewModel = viewModel(
+                factory = TransactionViewModel.provideFactory(totalPrice = price.toDouble())
+            )
+
+            TransactionScreen(
+                viewModel = transactionViewModel,
+                onBack = { navController.navigateUp() },
+                onCheckoutSuccess = {
+                    // ✅ PERUBAIKAN 1: Arahkan ke PaymentScreen dengan membawa harga
+                    navController.navigate("${Screen.Payment.route}/$price")
+                }
+            )
+        }
+
+        // Rute untuk Payment Screen
+        composable(
+            route = "${Screen.Payment.route}/{$KEY_TOTAL_PRICE}",
+            arguments = listOf(navArgument(KEY_TOTAL_PRICE) { type = NavType.FloatType })
+        ) { backStackEntry ->
+            // Walaupun PaymentScreen tidak secara langsung menggunakan harga ini di UI-nya,
+            // ViewModel-nya bisa saja membutuhkannya. Kita teruskan untuk konsistensi.
+            // val price = backStackEntry.arguments?.getFloat(KEY_TOTAL_PRICE) ?: 0f
+
+            PaymentScreen(
+                onBackClicked = { navController.navigateUp() },
+                onPaymentSuccess = {
+                    // ✅ PERBAIKAN 2: Setelah pembayaran sukses, kembali ke Dashboard
+                    // dan bersihkan semua riwayat transaksi dari tumpukan navigasi.
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = true
+                        }
+                        launchSingleTop = true
+                    }
+                },
+                // Gunakan factory jika PaymentViewModel Anda punya dependensi
+                paymentViewModel = viewModel(factory = PaymentViewModelFactory())
             )
         }
 
@@ -250,5 +307,17 @@ fun AppNavigationGraph() {
 
 
 
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun TransactionScreenPreview() {
+    LaundryGoTheme {
+        TransactionScreen(
+            viewModel = viewModel(),
+            onBack = {},
+            onCheckoutSuccess = {}
+        )
     }
 }
