@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.repository.AuthRepositoryImpl
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.TopUpState
 import com.android.laundrygo.viewmodel.TopUpUiState
@@ -43,7 +44,9 @@ import java.util.Locale
 @Composable
 fun TopUpScreen(
     onBackClick: () -> Unit,
-    topUpViewModel: TopUpViewModel = viewModel()
+    topUpViewModel: TopUpViewModel = viewModel(
+        factory = TopUpViewModel.provideFactory(AuthRepositoryImpl())
+    )
 ) {
     val state by topUpViewModel.state.collectAsState()
     val context = LocalContext.current
@@ -145,7 +148,7 @@ private fun TopUpContent(
             Spacer(modifier = Modifier.height(24.dp))
             PaymentMethodSelection(
                 methods = state.paymentMethods,
-                selectedMethod = state.selectedMethod,
+                selectedMethod = state.selectedPaymentMethod,
                 onPaymentMethodSelected = onPaymentMethodSelected
             )
             Spacer(modifier = Modifier.height(16.dp))
