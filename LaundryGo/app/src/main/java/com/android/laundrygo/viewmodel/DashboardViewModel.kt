@@ -3,27 +3,32 @@ package com.android.laundrygo.viewmodel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.model.User
+import com.android.laundrygo.repository.AuthRepository
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.text.NumberFormat
+import java.util.Locale
 
-class DashboardViewModel : ViewModel() {
-    // Firebase instances
-    private val auth = FirebaseAuth.getInstance()
-    private val firestore = FirebaseFirestore.getInstance()
+class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
-    // User information
+    // BARU: Tambahkan LiveData untuk menampung seluruh objek User
+    private val _user = MutableLiveData<User?>()
+    val user: LiveData<User?> = _user
+
+    // LiveData yang sudah ada untuk kemudahan akses di UI
     private val _userName = MutableLiveData<String>()
     val userName: LiveData<String> = _userName
 
     private val _userBalance = MutableLiveData<String>()
     val userBalance: LiveData<String> = _userBalance
 
-    // Error handling
-    private val _error = MutableLiveData<String>()
-    val error: LiveData<String> = _error
+    private val _error = MutableLiveData<String?>()
+    val error: LiveData<String?> = _error
 
     init {
         fetchUserData()
@@ -31,37 +36,31 @@ class DashboardViewModel : ViewModel() {
 
     fun fetchUserData() {
         viewModelScope.launch {
-            try {
-                // Get current user's UID
-                val currentUser = auth.currentUser
-                    ?: throw Exception("No authenticated user found")
+            val result = authRepository.getUserProfile()
 
-                // Fetch user document from Firestore
-                val userDoc = firestore.collection("users")
-                    .document(currentUser.uid)
-                    .get()
-                    .await()
+            result.onSuccess { user ->
+                // DIUBAH: Update semua LiveData saat data berhasil didapat
+                _user.value = user
+                _userName.value = user.name.ifEmpty { "User" }
+                // Format saldo dari Long ke String Rupiah dan update LiveData
+                _userBalance.value = formatCurrency(user.balance)
+                _error.value = null
 
-                // Extract user name (assuming there's a 'name' or 'username' field)
-                val userName = userDoc.getString("name")
-                    ?: userDoc.getString("username")
-                    ?: currentUser.displayName
-                    ?: "User"
-
-                // Extract balance (assuming there's a 'balance' field)
-                val userBalance = userDoc.getString("balance") ?: "0"
-
-                // Update LiveData
-                _userName.value = userName
-                _userBalance.value = userBalance
-
-            } catch (e: Exception) {
-                // Handle errors
-                _error.value = "Failed to load user data: ${e.message}"
+            }.onFailure { exception ->
+                _user.value = null
+                _error.value = "Gagal memuat data: ${exception.message}"
                 _userName.value = "User"
                 _userBalance.value = "0"
             }
         }
+    }
+
+    // Fungsi helper untuk format mata uang
+    private fun formatCurrency(amount: Long): String {
+        val format = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+        format.maximumFractionDigits = 0
+        // Hapus 'Rp' standar dan ganti dengan format yang kita mau, misal "1.500.000"
+        return format.format(amount).replace("Rp", "").trim()
     }
 
     // Navigation methods
@@ -88,6 +87,20 @@ class DashboardViewModel : ViewModel() {
     // Method to refresh dashboard data
     fun refreshDashboardData() {
         fetchUserData()
+    }
+
+    companion object {
+        fun provideFactory(
+            repository: AuthRepository,
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
+                    return DashboardViewModel(repository) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class")
+            }
+        }
     }
 }
 

@@ -4,6 +4,7 @@ import com.android.laundrygo.model.User
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
@@ -15,6 +16,7 @@ interface AuthRepository {
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
     suspend fun getUserProfile(): Result<User>
     suspend fun updateUserProfile(user: User): Result<Unit>
+    suspend fun performTopUp(amount: Long): Result<Unit>
     fun logout()
 }
 
@@ -103,6 +105,25 @@ class AuthRepositoryImpl : AuthRepository {
             val uid = auth.currentUser?.uid ?: throw Exception("User not logged in.")
             // Gunakan SetOptions.merge() agar hanya field yang berubah yang diupdate
             firestore.collection("users").document(uid).set(user, SetOptions.merge()).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Fungsi untuk Top Up
+    override suspend fun performTopUp(amount: Long): Result<Unit> {
+        return try {
+            val uid = auth.currentUser?.uid ?: throw Exception("User not logged in.")
+            if (amount <= 0) {
+                throw IllegalArgumentException("Top up amount must be positive.")
+            }
+            // Dapatkan referensi dokumen user
+            val userDocRef = firestore.collection("users").document(uid)
+
+            // Gunakan FieldValue.increment untuk menambah saldo secara aman di server
+            userDocRef.update("balance", FieldValue.increment(amount)).await()
+
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

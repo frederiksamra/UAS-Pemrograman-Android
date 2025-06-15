@@ -1,14 +1,15 @@
 package com.android.laundrygo.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.repository.AuthRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-// Tidak ada perubahan pada sealed class dan data class
 sealed class TopUpUiState {
     object Idle : TopUpUiState()
     object Processing : TopUpUiState()
@@ -16,7 +17,7 @@ sealed class TopUpUiState {
 }
 
 data class TopUpState(
-    val currentBalance: Long = 150000,
+    val currentBalance: Long = 0L, // Nilai awal 0, akan di-fetch dari Firestore
     val topUpAmounts: List<Long> = listOf(10000, 20000, 25000, 50000, 75000, 100000),
     val paymentMethods: List<String> = listOf("E-Wallet (GoPay, OVO, etc)", "Virtual Account", "Credit/Debit Card"),
     val selectedAmount: Long? = null,
@@ -25,18 +26,27 @@ data class TopUpState(
     val isCustomAmountSelected: Boolean = false,
     val uiState: TopUpUiState = TopUpUiState.Idle,
     val errorMessage: String? = null
-) {
-     val selectedMethod: String?
-         get() = selectedPaymentMethod
-}
-
-
-class TopUpViewModel : ViewModel() {
+)
+class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
     private val _state = MutableStateFlow(TopUpState())
     val state = _state.asStateFlow()
 
-    // --- Tidak ada perubahan pada fungsi-fungsi ini ---
+    // BARU: Fetch saldo awal saat ViewModel dibuat
+    init {
+        fetchCurrentUserBalance()
+    }
+
+    private fun fetchCurrentUserBalance() {
+        viewModelScope.launch {
+            authRepository.getUserProfile().onSuccess { user ->
+                _state.update { it.copy(currentBalance = user.balance) }
+            }.onFailure { exception ->
+                _state.update { it.copy(errorMessage = "Failed to load balance: ${exception.message}") }
+            }
+        }
+    }
+
     fun selectAmount(amount: Long) {
         _state.update {
             it.copy(
@@ -64,18 +74,15 @@ class TopUpViewModel : ViewModel() {
         _state.update { it.copy(selectedPaymentMethod = method) }
     }
 
-    // --- PERBAIKAN UTAMA DI SINI ---
+    // DIUBAH TOTAL: Logika proses pembayaran yang sebenarnya
     fun processPayment() {
-        // 1. Ambil snapshot dari state saat ini untuk memastikan konsistensi data
         val currentState = _state.value
-
         val amountToAdd = if (currentState.isCustomAmountSelected) {
             currentState.customAmount.toLongOrNull() ?: 0L
         } else {
             currentState.selectedAmount ?: 0L
         }
 
-        // Validasi tetap sama, tidak ada perubahan
         if (amountToAdd <= 0) {
             _state.update { it.copy(errorMessage = "Please select or enter a top up amount.") }
             return
@@ -86,21 +93,21 @@ class TopUpViewModel : ViewModel() {
         }
 
         viewModelScope.launch {
-            // Set state ke processing
-            _state.update { it.copy(uiState = TopUpUiState.Processing, errorMessage = null) }
+            _state.update { it.copy(uiState = TopUpUiState.Processing) }
 
-            // Simulasi proses
-            delay(2500)
+            val result = authRepository.performTopUp(amountToAdd)
 
-            // 2. Gunakan data dari `currentState` yang diambil di awal, bukan `_state.value` yang baru
-            // Ini untuk mencegah "race condition" jika state berubah selama delay
-            val newBalance = currentState.currentBalance + amountToAdd
-
-            _state.update {
-                it.copy(
-                    uiState = TopUpUiState.Success,
-                    currentBalance = newBalance
-                )
+            result.onSuccess {
+                // Jika berhasil, fetch ulang profil untuk mendapatkan saldo terbaru
+                fetchCurrentUserBalance()
+                _state.update { it.copy(uiState = TopUpUiState.Success) }
+            }.onFailure { exception ->
+                _state.update {
+                    it.copy(
+                        uiState = TopUpUiState.Idle,
+                        errorMessage = "Top up failed: ${exception.message}"
+                    )
+                }
             }
         }
     }
@@ -109,18 +116,29 @@ class TopUpViewModel : ViewModel() {
         _state.update { it.copy(errorMessage = null) }
     }
 
-    // --- PENYEDERHANAAN DI SINI ---
     fun finishTopUp() {
         _state.update {
             it.copy(
                 uiState = TopUpUiState.Idle,
                 selectedAmount = null,
                 customAmount = "",
-                isCustomAmountSelected = false,
-                errorMessage = null
-                // Tidak perlu `selectedPaymentMethod = it.selectedPaymentMethod`
-                // karena `copy()` secara default akan mempertahankan nilai yang tidak diubah.
+                isCustomAmountSelected = false
             )
+        }
+    }
+
+    // BARU: Factory untuk membuat instance ViewModel dengan dependensi (pola yang sudah Anda setujui)
+    companion object {
+        fun provideFactory(
+            repository: AuthRepository,
+        ): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                if (modelClass.isAssignableFrom(TopUpViewModel::class.java)) {
+                    return TopUpViewModel(repository) as T
+                }
+                throw IllegalArgumentException("Unknown ViewModel class")
+            }
         }
     }
 }

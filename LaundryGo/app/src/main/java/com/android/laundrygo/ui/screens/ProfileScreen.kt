@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.ProfileEvent
 import com.android.laundrygo.viewmodel.ProfileViewModel
@@ -96,7 +97,11 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
-                ProfileInitialCircle(name = uiState.name)
+                InitialsProfilePicture(
+                    name = uiState.name,
+                    size = 120.dp,
+                    textStyle = MaterialTheme.typography.displayLarge
+                )
                 Spacer(modifier = Modifier.height(8.dp))
 
                 // ✅ PERBAIKAN: Salin errorMessage ke variabel lokal terlebih dahulu
@@ -242,24 +247,6 @@ private fun ProfileInfoRow(
                 )
             },
             colors = themedListItemColors()
-        )
-    }
-}
-
-@Composable
-private fun ProfileInitialCircle(name: String, modifier: Modifier = Modifier) {
-    val initial = name.firstOrNull()?.uppercase() ?: ""
-    Box(
-        modifier = modifier
-            .size(120.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = initial,
-            style = MaterialTheme.typography.displayLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -27,12 +28,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.R
+import com.android.laundrygo.model.User
+import com.android.laundrygo.repository.AuthRepositoryImpl
+import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.DashboardViewModel
 
 @Composable
 fun DashboardScreen(
-    viewModel: DashboardViewModel = viewModel(),
     onNavigateToServiceType: () -> Unit = {},
     onNavigateToLocation: () -> Unit = {},
     onNavigateToCart: () -> Unit = {},
@@ -41,11 +44,17 @@ fun DashboardScreen(
     onNavigateToProfile: () -> Unit = {},
     onNavigateToHistory: () -> Unit = {}
 ) {
+    val repository = AuthRepositoryImpl()
+    val factory = DashboardViewModel.provideFactory(AuthRepositoryImpl())
+    val viewModel: DashboardViewModel = viewModel(factory = factory)
+
+    val user by viewModel.user.observeAsState(null)
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
     val error by viewModel.error.observeAsState()
 
     DashboardScreenContent(
+        user = user,
         userName = userName,
         userBalance = userBalance,
         error = error,
@@ -65,6 +74,7 @@ fun DashboardScreen(
 
 @Composable
 private fun DashboardScreenContent(
+    user: User?,
     userName: String,
     userBalance: String,
     error: String?,
@@ -87,9 +97,10 @@ private fun DashboardScreenContent(
             .verticalScroll(rememberScrollState())
     ) {
         HeaderSection(
+            user = user,
             userName = userName,
             userBalance = userBalance,
-            onSearchClick = onSearchClick,
+            onSearchClick = { /* ... */ },
             onTopUpClick = onTopUpClick,
             onNavigateToProfile = onNavigateToProfile
         )
@@ -127,6 +138,7 @@ private fun DashboardScreenContent(
 
 @Composable
 private fun HeaderSection(
+    user: User?,
     userName: String,
     userBalance: String,
     onSearchClick: () -> Unit,
@@ -138,21 +150,24 @@ private fun HeaderSection(
             .fillMaxWidth()
             .height(220.dp)
     ) {
+        // Latar belakang biru di bagian atas
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(165.dp)
                 .background(
-                    color = MaterialTheme.colorScheme.primary, // DIUBAH
+                    color = MaterialTheme.colorScheme.primary,
                     shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
                 )
         )
 
+        // Konten utama header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Baris untuk Search Bar dan Foto Profil
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -163,49 +178,43 @@ private fun HeaderSection(
                     modifier = Modifier
                         .weight(1f)
                         .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background), // DIUBAH
-                    shape = MaterialTheme.shapes.small // DIUBAH
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
+                    shape = MaterialTheme.shapes.small
                 ) {
                     Text(
                         text = "Search",
-                        color = MaterialTheme.colorScheme.onBackground, // DIUBAH
-                        style = MaterialTheme.typography.labelLarge // DIUBAH
+                        color = MaterialTheme.colorScheme.onBackground,
+                        style = MaterialTheme.typography.labelLarge
                     )
                 }
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                Box(
-                    modifier = Modifier
-                        .size(62.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                        .clickable { onNavigateToProfile() }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profile",
-                        tint = MaterialTheme.colorScheme.onPrimary, // DIUBAH
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(8.dp)
+                // --- PERUBAHAN UTAMA DI SINI ---
+                // Mengganti Icon statis dengan komponen InitialsProfilePicture
+                Box(modifier = Modifier.clickable { onNavigateToProfile() }) {
+                    InitialsProfilePicture(
+                        name = user?.name ?: "", // Mengambil nama dari objek User
+                        size = 62.dp,
+                        textStyle = MaterialTheme.typography.headlineSmall.copy(color = Color.White)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Kartu untuk "Hello, User" dan Saldo
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.medium, // DIUBAH
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer), // DIUBAH
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
                 elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Hello, $userName",
-                        style = MaterialTheme.typography.titleLarge, // DIUBAH
-                        color = MaterialTheme.colorScheme.onBackground // DIUBAH
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(
@@ -214,21 +223,22 @@ private fun HeaderSection(
                     ) {
                         Icon(
                             Icons.Default.AccountBalanceWallet, "Wallet",
-                            tint = MaterialTheme.colorScheme.onBackground, // DIUBAH
+                            tint = MaterialTheme.colorScheme.onBackground,
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
+                        // Menampilkan saldo yang sudah diformat dari ViewModel
                         Text(
                             text = "Rp $userBalance",
-                            style = MaterialTheme.typography.titleLarge, // DIUBAH
-                            color = MaterialTheme.colorScheme.onBackground // DIUBAH
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         Box(
                             modifier = Modifier
                                 .width(2.dp)
                                 .height(40.dp)
-                                .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)) // DIUBAH
+                                .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f))
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Row(
@@ -237,14 +247,14 @@ private fun HeaderSection(
                         ) {
                             Icon(
                                 Icons.Default.Add, "Top Up",
-                                tint = MaterialTheme.colorScheme.onBackground, // DIUBAH
+                                tint = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 "Top Up",
-                                style = MaterialTheme.typography.labelLarge, // DIUBAH
-                                color = MaterialTheme.colorScheme.onBackground // DIUBAH
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                         }
                     }
@@ -403,6 +413,7 @@ data class FeatureItem(val name: String, val icon: IconType, val id: String)
 fun DashboardScreenPreview() {
     LaundryGoTheme {
         DashboardScreenContent(
+            user = User(userId = "preview_id", name = "Saoirse"),
             userName = "Saoirse",
             userBalance = "1.500.000",
             error = null,
@@ -427,6 +438,7 @@ fun DashboardScreenErrorPreview() {
     LaundryGoTheme {
         // Preview untuk kondisi saat ada error
         DashboardScreenContent(
+            user = null,
             userName = "User",
             userBalance = "0",
             error = "Gagal memuat data pengguna. Silakan coba lagi.",
