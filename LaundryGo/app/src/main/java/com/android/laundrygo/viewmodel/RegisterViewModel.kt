@@ -1,7 +1,11 @@
 package com.android.laundrygo.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.model.User
+import com.android.laundrygo.repository.AuthRepository
+import com.android.laundrygo.repository.AuthRepositoryImpl
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,12 +39,12 @@ sealed interface RegisterUserEvent {
     data object RegisterClicked : RegisterUserEvent
 }
 
-// Event yang dikirim dari ViewModel ke UI (sekali jalan)
 sealed interface RegisterEvent {
     data object RegistrationSuccess : RegisterEvent
 }
 
-class RegisterViewModel : ViewModel() {
+// ViewModel sekarang menerima AuthRepository
+class RegisterViewModel(private val repository: AuthRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState = _uiState.asStateFlow()
@@ -48,7 +52,6 @@ class RegisterViewModel : ViewModel() {
     private val _eventFlow = MutableSharedFlow<RegisterEvent>()
     val eventFlow = _eventFlow.asSharedFlow()
 
-    // Satu fungsi untuk menangani semua event dari UI
     fun onEvent(event: RegisterUserEvent) {
         when (event) {
             is RegisterUserEvent.NameChanged -> _uiState.update { it.copy(name = event.value, errorMessage = null) }
@@ -67,31 +70,43 @@ class RegisterViewModel : ViewModel() {
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            try {
-                // Validasi sederhana
-                val state = _uiState.value
-                val isFormValid = state.name.isNotBlank() &&
-                        state.email.isNotBlank() &&
-                        state.phone.isNotBlank() &&
-                        state.address.isNotBlank() &&
-                        state.username.isNotBlank() &&
-                        state.password.isNotBlank()
 
-                // Simulasi proses registrasi
-                delay(2000)
+            val state = _uiState.value
+            val userProfile = User(
+                name = state.name.trim(),
+                email = state.email.trim(),
+                phone = state.phone.trim(),
+                address = state.address.trim(),
+                username = state.username.trim()
+            )
 
-                if (isFormValid) {
-                    // TODO: Tambahkan validasi yang lebih kompleks di sini (misal: format email, panjang password)
-                    _eventFlow.emit(RegisterEvent.RegistrationSuccess)
-                } else {
-                    _uiState.update { it.copy(errorMessage = "Semua field harus diisi") }
-                }
+            // Memanggil fungsi registrasi di repository
+            val result = repository.registerUser(
+                email = state.email.trim(),
+                password = state.password,
+                userProfile = userProfile
+            )
 
-            } catch (e: Exception) {
-                _uiState.update { it.copy(errorMessage = "Registrasi gagal: ${e.message}") }
-            } finally {
-                _uiState.update { it.copy(isLoading = false) }
+            // Menangani hasil dari repository
+            result.onSuccess {
+                _eventFlow.emit(RegisterEvent.RegistrationSuccess)
+            }.onFailure { exception ->
+                _uiState.update { it.copy(errorMessage = exception.message ?: "Registrasi gagal") }
             }
+
+            _uiState.update { it.copy(isLoading = false) }
         }
+    }
+}
+
+// Factory diperlukan untuk membuat ViewModel dengan dependensi
+class RegisterViewModelFactory : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(RegisterViewModel::class.java)) {
+            val repository = AuthRepositoryImpl()
+            return RegisterViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

@@ -35,69 +35,87 @@ import androidx.navigation.navArgument
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.TransactionViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
+import androidx.navigation.navigation
 import com.android.laundrygo.ui.screens.payment.PaymentScreen
+import com.android.laundrygo.viewmodel.LoginViewModelFactory
 import com.android.laundrygo.viewmodel.PaymentViewModelFactory
+import com.android.laundrygo.viewmodel.ProfileViewModelFactory
+import com.android.laundrygo.viewmodel.RegisterViewModelFactory
+
+// Mendefinisikan rute untuk setiap grafik agar lebih rapi
+object Graph {
+    const val ROOT = "root_graph"
+    const val AUTHENTICATION = "auth_graph"
+    const val MAIN = "main_graph"
+}
 
 @Composable
 fun AppNavigationGraph() {
     val navController = rememberNavController()
 
-    val KEY_TOTAL_PRICE = "totalPrice"
-
     NavHost(
         navController = navController,
-        startDestination = Screen.Start.route
+        startDestination = Graph.AUTHENTICATION, // Memulai dari grafik otentikasi
+        route = Graph.ROOT
     ) {
-        // Rute untuk StartScreen
+        // --- GRAFIK UNTUK ALUR OTENTIKASI (START, LOGIN, REGISTER) ---
+        authGraph(navController)
+
+        // --- GRAFIK UNTUK ALUR UTAMA APLIKASI (SETELAH LOGIN) ---
+        mainGraph(navController)
+    }
+}
+
+// Fungsi ini mengelompokkan semua rute otentikasi
+private fun NavGraphBuilder.authGraph(navController: NavHostController) {
+    navigation(
+        startDestination = Screen.Start.route,
+        route = Graph.AUTHENTICATION
+    ) {
         composable(route = Screen.Start.route) {
             StartScreen(
-                onNavigateToLogin = {
-                    navController.navigate(Screen.Login.route)
-                },
-                onNavigateToRegister = {
-                    navController.navigate(Screen.Register.route)
-                }
+                onNavigateToLogin = { navController.navigate(Screen.Login.route) },
+                onNavigateToRegister = { navController.navigate(Screen.Register.route) }
             )
         }
 
-        // Rute untuk LoginScreen
         composable(route = Screen.Login.route) {
             LoginScreen(
-                onBackClicked = {
-                    navController.navigateUp() // Kembali ke layar sebelumnya di tumpukan
-                },
+                onBackClicked = { navController.navigateUp() },
                 onLoginSuccess = {
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Start.route) {
-                            inclusive = true
-                        }
+                    // Setelah login, pindah ke grafik utama dan hapus grafik otentikasi
+                    navController.navigate(Graph.MAIN) {
+                        popUpTo(Graph.AUTHENTICATION) { inclusive = true }
                     }
                 },
-                onNavigateToForgotPassword = {
-                    // navController.navigate(Screen.ForgotPassword.route)
-                }
+                // onNavigateToForgotPassword tidak lagi diperlukan karena ditangani oleh ViewModel
+                viewModel = viewModel(factory = LoginViewModelFactory())
             )
         }
 
-        // Rute untuk RegisterScreen
         composable(route = Screen.Register.route) {
             RegisterScreen(
-                onBackClicked = {
-                    navController.navigateUp()
-                },
-                onRegistrationSuccess = {
-                    // Setelah registrasi, kembali ke halaman sebelumnya (StartScreen)
-                    navController.popBackStack()
-                }
+                onBackClicked = { navController.navigateUp() },
+                onRegistrationSuccess = { navController.popBackStack() },
+                viewModel = viewModel(factory = RegisterViewModelFactory())
             )
         }
+    }
+}
 
-        // Rute untuk DashboardScreen
+// Fungsi ini mengelompokkan semua rute aplikasi utama
+private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
+    navigation(
+        startDestination = Screen.Dashboard.route,
+        route = Graph.MAIN
+    ) {
         composable(route = Screen.Dashboard.route) {
             DashboardScreen(
                 onNavigateToServiceType = { navController.navigate(Screen.ServiceType.route) },
                 onNavigateToLocation = { navController.navigate(Screen.Location.route) },
-                onNavigateToCart = {navController.navigate(Screen.Cart.route)},
+                onNavigateToCart = { navController.navigate(Screen.Cart.route) },
                 onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) },
                 onNavigateToProfile = { navController.navigate(Screen.Profile.route) },
                 onNavigateToTopUp = { navController.navigate(Screen.TopUp.route) },
@@ -105,146 +123,98 @@ fun AppNavigationGraph() {
             )
         }
 
+        // Rute untuk DashboardScreen
+        composable(route = com.android.laundrygo.navigation.Screen.Dashboard.route) {
+            DashboardScreen(
+                onNavigateToServiceType = { navController.navigate(com.android.laundrygo.navigation.Screen.ServiceType.route) },
+                onNavigateToLocation = { navController.navigate(com.android.laundrygo.navigation.Screen.Location.route) },
+                onNavigateToCart = {navController.navigate(com.android.laundrygo.navigation.Screen.Cart.route)},
+                onNavigateToVoucher = { navController.navigate(com.android.laundrygo.navigation.Screen.Voucher.route) },
+                onNavigateToProfile = { navController.navigate(com.android.laundrygo.navigation.Screen.Profile.route) },
+                onNavigateToTopUp = { navController.navigate(com.android.laundrygo.navigation.Screen.TopUp.route) },
+                onNavigateToHistory = { navController.navigate(com.android.laundrygo.navigation.Screen.History.route) }
+            )
+        }
+
         // Rute untuk TopUp
-        composable(route = Screen.TopUp.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.TopUp.route) {
             TopUpScreen(
                 onBackClick = { navController.navigateUp() }
             )
         }
 
         // Rute untuk Bag
-        composable(route = Screen.Bag.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.Bag.route) {
             BagScreen(
                 onBack = { navController.navigateUp() },
-                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onCartClick = { navController.navigate(com.android.laundrygo.navigation.Screen.Cart.route) },
                 onAddClick = {}
             )
         }
 
         // Rute untuk Doll
-        composable(route = Screen.Doll.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.Doll.route) {
             DollScreen(
                 onBack = { navController.navigateUp() },
-                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onCartClick = { navController.navigate(com.android.laundrygo.navigation.Screen.Cart.route) },
                 onAddClick = {}
             )
         }
 
         // Rute untuk Location
-        composable(route = Screen.Location.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.Location.route) {
             LocationScreen(
                 onBack = { navController.navigateUp() }
             )
         }
 
         // Rute untuk ServiceType
-        composable(route = Screen.ServiceType.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.ServiceType.route) {
             ServiceTypeScreen(
                 onBack = { navController.navigateUp() },
                 // Kita gunakan satu callback onServiceSelected
                 onServiceSelected = { serviceName ->
                     when (serviceName) {
-                        "Pakaian Harian" -> navController.navigate(Screen.ShirtPants.route)
-                        "Perawatan Khusus" -> navController.navigate(Screen.SpecialTreatment.route)
-                        "Boneka" -> navController.navigate(Screen.Doll.route)
-                        "Tas" -> navController.navigate(Screen.Bag.route)
-                        "Sepatu" -> navController.navigate(Screen.Shoes.route)
+                        "Pakaian Harian" -> navController.navigate(com.android.laundrygo.navigation.Screen.ShirtPants.route)
+                        "Perawatan Khusus" -> navController.navigate(com.android.laundrygo.navigation.Screen.SpecialTreatment.route)
+                        "Boneka" -> navController.navigate(com.android.laundrygo.navigation.Screen.Doll.route)
+                        "Tas" -> navController.navigate(com.android.laundrygo.navigation.Screen.Bag.route)
+                        "Sepatu" -> navController.navigate(com.android.laundrygo.navigation.Screen.Shoes.route)
                     }
                 }
             )
         }
 
         // Rute untuk ShirtPants
-        composable(route = Screen.ShirtPants.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.ShirtPants.route) {
             ShirtPantsScreen(
                 onBack = { navController.navigateUp() },
-                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onCartClick = { navController.navigate(com.android.laundrygo.navigation.Screen.Cart.route) },
                 onAddClick = {}
             )
         }
 
         // Rute untuk Shoes
-        composable(route = Screen.Shoes.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.Shoes.route) {
             ShoesScreen(
                 onBack = { navController.navigateUp() },
-                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onCartClick = { navController.navigate(com.android.laundrygo.navigation.Screen.Cart.route) },
                 onAddClick = {}
 
             )
         }
 
         // Rute untuk SpecialTreatment
-        composable(route = Screen.SpecialTreatment.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.SpecialTreatment.route) {
             SpecialTreatmentScreen(
                 onBack = { navController.navigateUp() },
-                onCartClick = { navController.navigate(Screen.Cart.route) },
+                onCartClick = { navController.navigate(com.android.laundrygo.navigation.Screen.Cart.route) },
                 onAddClick = {}
             )
         }
 
-        // Rute untuk Cart
-        composable(route = Screen.Cart.route) {
-            val cartViewModel: CartViewModel = viewModel()
-            // Sebaiknya gunakan .collectAsState() jika totalPrice adalah StateFlow
-            val totalPrice = cartViewModel.totalPrice
-
-            CartScreen(
-                viewModel = cartViewModel,
-                onBack = { navController.navigateUp() },
-                onCheckoutClick = {
-                    navController.navigate("${Screen.Transaction.route}/$totalPrice")
-                }
-            )
-        }
-
-        // Rute untuk Transaction Screen
-        composable(
-            route = "${Screen.Transaction.route}/{$KEY_TOTAL_PRICE}",
-            arguments = listOf(navArgument(KEY_TOTAL_PRICE) { type = NavType.FloatType })
-        ) { backStackEntry ->
-            val price = backStackEntry.arguments?.getFloat(KEY_TOTAL_PRICE) ?: 0f
-            val transactionViewModel: TransactionViewModel = viewModel(
-                factory = TransactionViewModel.provideFactory(totalPrice = price.toDouble())
-            )
-
-            TransactionScreen(
-                viewModel = transactionViewModel,
-                onBack = { navController.navigateUp() },
-                onCheckoutSuccess = {
-                    // ✅ PERUBAIKAN 1: Arahkan ke PaymentScreen dengan membawa harga
-                    navController.navigate("${Screen.Payment.route}/$price")
-                }
-            )
-        }
-
-        // Rute untuk Payment Screen
-        composable(
-            route = "${Screen.Payment.route}/{$KEY_TOTAL_PRICE}",
-            arguments = listOf(navArgument(KEY_TOTAL_PRICE) { type = NavType.FloatType })
-        ) { backStackEntry ->
-            // Walaupun PaymentScreen tidak secara langsung menggunakan harga ini di UI-nya,
-            // ViewModel-nya bisa saja membutuhkannya. Kita teruskan untuk konsistensi.
-            // val price = backStackEntry.arguments?.getFloat(KEY_TOTAL_PRICE) ?: 0f
-
-            PaymentScreen(
-                onBackClicked = { navController.navigateUp() },
-                onPaymentSuccess = {
-                    // ✅ PERBAIKAN 2: Setelah pembayaran sukses, kembali ke Dashboard
-                    // dan bersihkan semua riwayat transaksi dari tumpukan navigasi.
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            inclusive = true
-                        }
-                        launchSingleTop = true
-                    }
-                },
-                // Gunakan factory jika PaymentViewModel Anda punya dependensi
-                paymentViewModel = viewModel(factory = PaymentViewModelFactory())
-            )
-        }
-
         // Rute untuk VoucherScreen
-        composable(route = Screen.Voucher.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.Voucher.route) {
             VoucherScreen(
                 onBackClick = {
                     navController.navigateUp() // Aksi untuk kembali ke layar sebelumnya
@@ -252,72 +222,90 @@ fun AppNavigationGraph() {
             )
         }
 
-        // Rute untuk ProfileScreen
-        composable(route = Screen.Profile.route) {
-            // DITAMBAHKAN: Ambil instance ViewModel untuk mengakses state
-            val viewModel: ProfileViewModel = viewModel()
-            val isEditMode by viewModel.isEditMode.collectAsState()
-
-            // DITAMBAHKAN: Menangani tombol kembali dari sistem (system back-press)
-            // Handler ini hanya aktif jika isEditMode == true
-            BackHandler(enabled = isEditMode) {
-                // Jika pengguna menekan kembali saat mengedit,
-                // batalkan mode edit, jangan keluar dari layar.
-                viewModel.onCancelEdit()
-            }
-
-            ProfileScreen(
-                // viewModel diteruskan agar BackHandler dan ProfileScreen
-                // menggunakan instance yang sama.
-                viewModel = viewModel,
-                onNavigateBack = {
-                    // Aksi ini hanya akan terpanggil dari dalam ProfileScreen
-                    // jika TIDAK dalam mode edit.
-                    navController.navigateUp()
-                },
-                onLogout = {
-                    // Aksi setelah logout berhasil (tidak berubah)
-                    navController.navigate(Screen.Start.route) {
-                        popUpTo(navController.graph.findStartDestination().id) {
-                            inclusive = true
-                        }
-                        launchSingleTop = true
-                    }
-                }
-            )
-        }
         // Rute untuk HistoryScreen
-        composable(route = Screen.History.route) {
+        composable(route = com.android.laundrygo.navigation.Screen.History.route) {
             HistoryScreen(
                 onBack = { navController.navigateUp() },
                 onCheckClick = { orderId ->
-                    navController.navigate(Screen.HistoryDetail.createRoute(orderId))
+                    navController.navigate(com.android.laundrygo.navigation.Screen.HistoryDetail.createRoute(orderId))
                 }
             )
         }
 
-        composable(route = Screen.HistoryDetail.route) { backStackEntry ->
+        composable(route = com.android.laundrygo.navigation.Screen.HistoryDetail.route) { backStackEntry ->
 
-        val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
             HistoryDetailScreen(
                 orderId = orderId,
                 onBack = { navController.navigateUp() }
             )
         }
 
+        val KEY_TOTAL_PRICE = "totalPrice"
 
+        composable(route = Screen.Cart.route) {
+            val cartViewModel: CartViewModel = viewModel()
+//            val totalPrice by cartViewModel.totalPrice.collectAsState()
 
-    }
-}
+            CartScreen(
+                viewModel = cartViewModel,
+                onBack = { navController.navigateUp() },
+                onCheckoutClick = {
+//                    navController.navigate("${Screen.Transaction.route}/$totalPrice")
+                }
+            )
+        }
 
-@Preview(showBackground = true)
-@Composable
-private fun TransactionScreenPreview() {
-    LaundryGoTheme {
-        TransactionScreen(
-            viewModel = viewModel(),
-            onBack = {},
-            onCheckoutSuccess = {}
-        )
+        composable(
+            route = "${Screen.Transaction.route}/{$KEY_TOTAL_PRICE}",
+            arguments = listOf(navArgument(KEY_TOTAL_PRICE) { type = NavType.FloatType })
+        ) { backStackEntry ->
+            val price = backStackEntry.arguments?.getFloat(KEY_TOTAL_PRICE) ?: 0f
+            val transactionViewModel: TransactionViewModel = viewModel(
+                factory = TransactionViewModel.provideFactory(price.toDouble())
+            )
+            TransactionScreen(
+                viewModel = transactionViewModel,
+                onBack = { navController.navigateUp() },
+                onCheckoutSuccess = {
+                    navController.navigate("${Screen.Payment.route}/$price")
+                }
+            )
+        }
+
+        composable(
+            route = "${Screen.Payment.route}/{$KEY_TOTAL_PRICE}",
+            arguments = listOf(navArgument(KEY_TOTAL_PRICE) { type = NavType.FloatType })
+        ) {
+            PaymentScreen(
+                onBackClicked = { navController.navigateUp() },
+                onPaymentSuccess = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Graph.MAIN) { inclusive = true }
+                    }
+                },
+                paymentViewModel = viewModel(factory = PaymentViewModelFactory())
+            )
+        }
+
+        // Rute untuk ProfileScreen
+        composable(route = Screen.Profile.route) {
+            val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory())
+            val isEditMode by profileViewModel.isEditMode.collectAsState()
+
+            BackHandler(enabled = isEditMode) {
+                profileViewModel.onCancelEdit()
+            }
+
+            ProfileScreen(
+                viewModel = profileViewModel,
+                onNavigateBack = { navController.navigateUp() },
+                onLogout = {
+                    navController.navigate(Graph.AUTHENTICATION) {
+                        popUpTo(Graph.MAIN) { inclusive = true }
+                    }
+                }
+            )
+        }
     }
 }

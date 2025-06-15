@@ -23,12 +23,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.ProfileEvent
 import com.android.laundrygo.viewmodel.ProfileViewModel
+import com.android.laundrygo.viewmodel.ProfileViewModelFactory
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,9 +38,8 @@ import com.android.laundrygo.viewmodel.ProfileViewModel
 fun ProfileScreen(
     onNavigateBack: () -> Unit,
     onLogout: () -> Unit,
-    viewModel: ProfileViewModel = viewModel()
+    viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory())
 ) {
-    // Ambil semua state yang dibutuhkan dari ViewModel
     val uiState by viewModel.uiState.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
     val editState by viewModel.editState.collectAsState()
@@ -62,7 +63,6 @@ fun ProfileScreen(
                 title = { Text("My Profile", style = MaterialTheme.typography.titleLarge) },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // Jika sedang mode edit, jangan langsung kembali, tawarkan untuk batal
                         if (isEditMode) {
                             viewModel.onCancelEdit()
                         } else {
@@ -83,113 +83,127 @@ fun ProfileScreen(
             )
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-            ProfileInitialCircle(name = uiState.name)
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Gunakan TextField saat mode edit untuk NAMA
-            if (isEditMode) {
-                OutlinedTextField(
-                    value = editState.name,
-                    onValueChange = { viewModel.onNameChange(it) },
-                    label = { Text("Nama Lengkap") },
-                    singleLine = true,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-            } else {
-                Text(
-                    text = uiState.name,
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        if (uiState.isLoading && !isEditMode) {
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
             }
-            Text( // Username tidak kita buat bisa diedit
-                text = "@${uiState.username}",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Tampilkan tombol sesuai mode
-            if (isEditMode) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { viewModel.onSaveEdit() }) {
-                        Icon(Icons.Default.Done, contentDescription = "Simpan")
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Simpan")
-                    }
-                    OutlinedButton(onClick = { viewModel.onCancelEdit() }) {
-                        Text("Batal")
-                    }
-                }
-            } else {
-                Button(onClick = { viewModel.onEnterEditMode() }) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit Profile", modifier = Modifier.size(ButtonDefaults.IconSize))
-                    Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
-                    Text("Edit Profile")
-                }
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Card(
+        } else {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // ListItem menjadi dinamis
-                ProfileInfoRow(
-                    isEditMode = isEditMode,
-                    icon = Icons.Default.Email,
-                    label = "Email",
-                    value = if (isEditMode) editState.email else uiState.email,
-                    onValueChange = { viewModel.onEmailChange(it) }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.padding(horizontal=16.dp))
-                ProfileInfoRow(
-                    isEditMode = isEditMode,
-                    icon = Icons.Default.Phone,
-                    label = "Phone Number",
-                    value = if (isEditMode) editState.phone else uiState.phone,
-                    onValueChange = { viewModel.onPhoneChange(it) }
-                )
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.padding(horizontal=16.dp))
-                ProfileInfoRow(
-                    isEditMode = isEditMode,
-                    icon = Icons.Default.Home,
-                    label = "Address",
-                    value = if (isEditMode) editState.address else uiState.address,
-                    onValueChange = { viewModel.onAddressChange(it) },
-                    singleLine = false
-                )
-            }
+                Spacer(modifier = Modifier.height(16.dp))
+                ProfileInitialCircle(name = uiState.name)
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Tombol logout hanya tampil saat tidak sedang mode edit
-            AnimatedVisibility(!isEditMode) {
-                OutlinedButton(
-                    onClick = { viewModel.logout() },
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxWidth()
-                        .height(50.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-                ) {
-                    Text(text = "Log out", color = MaterialTheme.colorScheme.error)
+                // ✅ PERBAIKAN: Salin errorMessage ke variabel lokal terlebih dahulu
+                val errorMessage = uiState.errorMessage
+                if (errorMessage != null) {
+                    Text(
+                        text = errorMessage, // Gunakan variabel lokal yang sudah pasti non-null di sini
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
                 }
+
+                if (isEditMode) {
+                    OutlinedTextField(
+                        value = editState.name,
+                        onValueChange = { viewModel.onNameChange(it) },
+                        label = { Text("Nama Lengkap") },
+                        singleLine = true,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                } else {
+                    Text(
+                        text = uiState.name,
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                Text(
+                    text = "@${uiState.username}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (isEditMode) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { viewModel.onSaveEdit() }) {
+                            Icon(Icons.Default.Done, contentDescription = "Simpan")
+                            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+                            Text("Simpan")
+                        }
+                        OutlinedButton(onClick = { viewModel.onCancelEdit() }) {
+                            Text("Batal")
+                        }
+                    }
+                } else {
+                    Button(onClick = { viewModel.onEnterEditMode() }) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edit Profile", modifier = Modifier.size(ButtonDefaults.IconSize))
+                        Spacer(modifier = Modifier.size(ButtonDefaults.IconSpacing))
+                        Text("Edit Profile")
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    ProfileInfoRow(
+                        isEditMode = isEditMode,
+                        icon = Icons.Default.Email,
+                        label = "Email",
+                        value = if (isEditMode) editState.email else uiState.email,
+                        onValueChange = { viewModel.onEmailChange(it) }
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.padding(horizontal=16.dp))
+                    ProfileInfoRow(
+                        isEditMode = isEditMode,
+                        icon = Icons.Default.Phone,
+                        label = "Phone Number",
+                        value = if (isEditMode) editState.phone else uiState.phone,
+                        onValueChange = { viewModel.onPhoneChange(it) }
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.padding(horizontal=16.dp))
+                    ProfileInfoRow(
+                        isEditMode = isEditMode,
+                        icon = Icons.Default.Home,
+                        label = "Address",
+                        value = if (isEditMode) editState.address else uiState.address,
+                        onValueChange = { viewModel.onAddressChange(it) },
+                        singleLine = false
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                AnimatedVisibility(!isEditMode) {
+                    OutlinedButton(
+                        onClick = { viewModel.logout() },
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
+                    ) {
+                        Text(text = "Log out", color = MaterialTheme.colorScheme.error)
+                    }
+                }
+                Spacer(modifier = Modifier.height(40.dp))
             }
-            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }

@@ -3,4 +3,5 @@
     <string name="title_activity_screens">screens</string>
     <string name="title_activity_dashboard_view_model">DashboardViewModel</string>
     <string name="title_activity_dashboard_screen">DashboardScreen</string>
+    <string name="default_web_client_id">1085081358340-jehu1h4s4bd37lrvsm9bh8usvoeisv6l.apps.googleusercontent.com</string>
 </resources>

@@ -24,13 +24,15 @@ import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.RegisterEvent
 import com.android.laundrygo.viewmodel.RegisterUserEvent
 import com.android.laundrygo.viewmodel.RegisterViewModel
+import com.android.laundrygo.viewmodel.RegisterViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     onBackClicked: () -> Unit,
     onRegistrationSuccess: () -> Unit,
-    viewModel: RegisterViewModel = viewModel()
+    // Di dalam RegisterScreen.kt
+    viewModel: RegisterViewModel = viewModel(factory = RegisterViewModelFactory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
