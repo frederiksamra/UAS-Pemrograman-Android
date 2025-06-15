@@ -1,6 +1,9 @@
 package com.android.laundrygo.ui.screens
 
+import android.app.Activity
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -16,8 +19,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.autofill.AutofillType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -25,20 +30,49 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.R
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.LoginEvent
 import com.android.laundrygo.viewmodel.LoginViewModel
+import com.android.laundrygo.viewmodel.LoginViewModelFactory
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onBackClicked: () -> Unit,
     onLoginSuccess: () -> Unit,
-    onNavigateToForgotPassword: () -> Unit,
-    viewModel: LoginViewModel = viewModel()
+    viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // --- Logic untuk Google Sign-In ---
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)!!
+                val idToken = account.idToken!!
+                viewModel.onGoogleLogin(idToken)
+            } catch (e: ApiException) {
+                Toast.makeText(context, "Google Sign-In failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    val gso = remember {
+        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(context.getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+    }
+    val googleSignInClient = remember { GoogleSignIn.getClient(context, gso) }
+
 
     LaunchedEffect(key1 = true) {
         viewModel.eventFlow.collect { event ->
@@ -47,9 +81,8 @@ fun LoginScreen(
                     Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
                     onLoginSuccess()
                 }
-                is LoginEvent.NavigateToForgotPassword -> {
-                    Toast.makeText(context, "Navigasi ke Lupa Password", Toast.LENGTH_SHORT).show()
-                    onNavigateToForgotPassword()
+                is LoginEvent.ShowMessage -> {
+                    Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -118,13 +151,12 @@ fun LoginScreen(
                     }
 
                     OutlinedTextField(
-                        value = uiState.username,
-                        onValueChange = viewModel::onUsernameChange,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 16.dp),
-                        label = { Text("Username") },
-                        leadingIcon = { Icon(Icons.Default.Person, "Username Icon") },
+                        value = uiState.email,
+                        onValueChange = viewModel::onEmailChange,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        label = { Text("Email") }, // Label diubah
+                        leadingIcon = { Icon(Icons.Default.Person, "Email Icon") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                         singleLine = true,
                         readOnly = uiState.isLoading,
                         isError = uiState.errorMessage != null,
@@ -200,7 +232,7 @@ fun LoginScreen(
                     }
 
                     OutlinedButton(
-                        onClick = { /* TODO: Implement Google Login */ },
+                        onClick = { googleSignInLauncher.launch(googleSignInClient.signInIntent) },
                         enabled = !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -255,8 +287,7 @@ fun LoginScreenPreview() {
     LaundryGoTheme {
         LoginScreen(
             onBackClicked = {},
-            onLoginSuccess = {},
-            onNavigateToForgotPassword = {}
+            onLoginSuccess = {}
         )
     }
 }
