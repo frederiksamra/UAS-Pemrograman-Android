@@ -33,6 +33,8 @@ import com.android.laundrygo.repository.AuthRepositoryImpl
 import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.DashboardViewModel
+import com.android.laundrygo.model.Voucher
+
 
 @Composable
 fun DashboardScreen(
@@ -45,14 +47,16 @@ fun DashboardScreen(
     onNavigateToHistory: () -> Unit = {}
 ) {
     val repository = AuthRepositoryImpl()
-    val factory = DashboardViewModel.provideFactory(AuthRepositoryImpl())
+    val factory = DashboardViewModel.provideFactory(repository)
     val viewModel: DashboardViewModel = viewModel(factory = factory)
 
     val user by viewModel.user.observeAsState(null)
     val userName by viewModel.userName.observeAsState("User")
     val userBalance by viewModel.userBalance.observeAsState("0")
     val error by viewModel.error.observeAsState()
+    val vouchers by viewModel.vouchers.observeAsState(emptyList())
 
+    // --- SUDAH CUKUP MEMANGGIL 1x di dalam DashboardScreenContent ---
     DashboardScreenContent(
         user = user,
         userName = userName,
@@ -60,7 +64,7 @@ fun DashboardScreen(
         error = error,
         onTopUpClick = onNavigateToTopUp,
         onSearchClick = { /* Handle search */ },
-        onFeatureClick = { feature -> /* Handle feature clicks, ini akan ditangani di bawah */ },
+        onFeatureClick = { feature -> /* Handle feature clicks */ },
         onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
         onNavigateToServiceType = onNavigateToServiceType,
         onNavigateToLocation = onNavigateToLocation,
@@ -68,7 +72,8 @@ fun DashboardScreen(
         onNavigateToVoucher = onNavigateToVoucher,
         onNavigateToTopUp = onNavigateToTopUp,
         onNavigateToProfile = onNavigateToProfile,
-        onNavigateToHistory = onNavigateToHistory
+        onNavigateToHistory = onNavigateToHistory,
+        vouchers = vouchers // tambahkan vouchers ke parameter
     )
 }
 
@@ -88,7 +93,8 @@ private fun DashboardScreenContent(
     onNavigateToVoucher: () -> Unit,
     onNavigateToTopUp: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onNavigateToHistory: () -> Unit
+    onNavigateToHistory: () -> Unit,
+    vouchers: List<Voucher> // ✅ Tambahkan ini
 ) {
     Column(
         modifier = Modifier
@@ -100,7 +106,7 @@ private fun DashboardScreenContent(
             user = user,
             userName = userName,
             userBalance = userBalance,
-            onSearchClick = { /* ... */ },
+            onSearchClick = onSearchClick,
             onTopUpClick = onTopUpClick,
             onNavigateToProfile = onNavigateToProfile
         )
@@ -126,15 +132,17 @@ private fun DashboardScreenContent(
                 "nearest_location" -> onNavigateToLocation()
                 "cart" -> onNavigateToCart()
                 "voucher" -> onNavigateToVoucher()
-                // Logika when ini sudah benar, masalahnya ada di daftar fitur
                 "top_up" -> onNavigateToTopUp()
                 "history" -> onNavigateToHistory()
                 else -> onFeatureClick(featureId)
             }
         })
-        PromoSection(onClaimVoucherClick = onClaimVoucherClick)
+
+        // ✅ Panggil PromoSection di sini saja
+        PromoSection(vouchers = vouchers, onClaimVoucherClick = onClaimVoucherClick)
     }
 }
+
 
 @Composable
 private fun HeaderSection(
@@ -335,25 +343,34 @@ private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
     }
 }
 
+
 @Composable
-private fun PromoSection(onClaimVoucherClick: (String) -> Unit) {
+private fun PromoSection(
+    vouchers: List<Voucher>,
+    onClaimVoucherClick: (String) -> Unit
+) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = "Promo",
-            style = MaterialTheme.typography.headlineLarge, // DIUBAH
-            color = MaterialTheme.colorScheme.primary, // DIUBAH
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        repeat(3) { index ->
-            VoucherCard(voucherId = "voucher_${index + 1}", onClaimClick = onClaimVoucherClick)
-            Spacer(modifier = Modifier.height(16.dp))
+        if (vouchers.isEmpty()) {
+            Text("Tidak ada voucher tersedia", style = MaterialTheme.typography.bodyLarge)
+        } else {
+            vouchers.forEach { voucher ->
+                VoucherCard(voucher = voucher, onClaimClick = onClaimVoucherClick)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }
 
+
 @Composable
-private fun VoucherCard(voucherId: String, onClaimClick: (String) -> Unit) {
+private fun VoucherCard(voucher: Voucher, onClaimClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -373,32 +390,33 @@ private fun VoucherCard(voucherId: String, onClaimClick: (String) -> Unit) {
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "Special Offer!",
+                    text = voucher.voucher_code,
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
                 Text(
-                    text = "Get 20% discount on your next laundry service",
+                    text = "Diskon Rp ${voucher.discount_value}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             }
             Button(
-                onClick = { onClaimClick(voucherId) },
+                onClick = { onClaimClick(voucher.documentId) },
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(12.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer, // DIUBAH
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer // DIUBAH
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                 ),
-                shape = MaterialTheme.shapes.small // DIUBAH
+                shape = MaterialTheme.shapes.small
             ) {
                 Text("Claim", style = MaterialTheme.typography.labelLarge)
             }
         }
     }
 }
+
 
 // Data classes
 sealed class IconType {
@@ -427,7 +445,18 @@ fun DashboardScreenPreview() {
             onNavigateToVoucher = {},
             onNavigateToTopUp = {},
             onNavigateToProfile = {},
-            onNavigateToHistory = {}
+            onNavigateToHistory = {},
+            vouchers =listOf(
+                Voucher(
+                    voucher_code = "DISKON10",
+                    discount_type = "fixed",
+                    discount_value = 10000,
+                    is_active = true,
+                    valid_from = null,
+                    valid_until = null,
+                    documentId = "voucher_001"
+                )
+            )
         )
     }
 }
@@ -452,7 +481,18 @@ fun DashboardScreenErrorPreview() {
             onNavigateToVoucher = {},
             onNavigateToTopUp = {},
             onNavigateToProfile = {},
-            onNavigateToHistory = {}
+            onNavigateToHistory = {},
+            vouchers =listOf(
+                Voucher(
+                    voucher_code = "DISKON10",
+                    discount_type = "fixed",
+                    discount_value = 10000,
+                    is_active = true,
+                    valid_from = null,
+                    valid_until = null,
+                    documentId = "voucher_001"
+                )
+            )
         )
     }
 }
