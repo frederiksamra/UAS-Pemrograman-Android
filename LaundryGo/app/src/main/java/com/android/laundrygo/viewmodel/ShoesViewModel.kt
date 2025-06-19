@@ -1,25 +1,54 @@
 package com.android.laundrygo.viewmodel
 
-import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
-import com.android.laundrygo.model.ServiceItem
-import com.android.laundrygo.model.parsePrice
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.model.LaundryService
+import com.android.laundrygo.repository.ServiceRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class ShoesViewModel : ViewModel() {
-    val services = listOf(
-        ServiceItem("Deep Cleaning Shoes", null, "IDR 60.000/Pair of shoes", 0xFFF5F5F5),
-        ServiceItem("Premium Cleaning + Unyellowing", null, "IDR 80.000/Pair of shoes", 0xFFFFFDE7),
-        ServiceItem("Fast Cleaning Shoes", null, "IDR 20.000/Pair of shoes", 0xFFF5F5F5)
-    )
-    val cart = mutableStateListOf<ServiceItem>()
-    fun addToCart(item: ServiceItem) {
-        cart.add(item)
+data class ShoesUiState(
+    val isLoading: Boolean = true,
+    val services: List<LaundryService> = emptyList(),
+    val error: String? = null
+)
+
+class ShoesViewModel(private val repository: ServiceRepository) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(ShoesUiState())
+    val uiState = _uiState.asStateFlow()
+
+    init {
+        fetchShoesServices()
     }
-    fun removeFromCart(item: ServiceItem) {
-        cart.remove(item)
+
+    private fun fetchShoesServices() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            val result = repository.getServices("shoes")
+
+            result.onSuccess { services ->
+                _uiState.update { it.copy(isLoading = false, services = services) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isLoading = false, error = error.message) }
+            }
+        }
     }
-    fun getTotalPrice(): Int {
-        return cart.sumOf { parsePrice(it.price) }
+
+    companion object {
+        fun provideFactory(repository: ServiceRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    if (modelClass.isAssignableFrom(ShoesViewModel::class.java)) {
+                        return ShoesViewModel(repository) as T
+                    }
+                    throw IllegalArgumentException("Unknown ViewModel class")
+                }
+            }
     }
 }
-
