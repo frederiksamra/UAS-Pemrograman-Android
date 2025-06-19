@@ -119,8 +119,7 @@ private fun ServicePackageCard(
     val descriptionColor = if (isCreamCard) DarkBlue.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.8f)
     val priceColor = if (isCreamCard) DarkBlue else Color.White
 
-    // Format harga dari Long ke String
-    val formattedPrice = formatPrice(service.price)
+    val formattedPrice = formatRupiah(service.price)
 
     Card(
         modifier = Modifier.fillMaxWidth(),

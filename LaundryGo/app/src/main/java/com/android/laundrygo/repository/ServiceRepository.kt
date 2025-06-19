@@ -1,3 +1,5 @@
+
+
 package com.android.laundrygo.repository
 
 import android.util.Log
@@ -8,6 +10,7 @@ import com.android.laundrygo.model.User
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.toObject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +35,8 @@ interface ServiceRepository {
     // User & Pembayaran
     fun getCurrentUserProfile(): Flow<Result<User?>>
     suspend fun processBalancePayment(userId: String, amountToDeduct: Double): Result<Unit>
+    // --- FUNGSI BARU YANG DIBUTUHKAN ---
+    fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>>
 }
 
 // --- IMPLEMENTASI ---
@@ -46,7 +51,6 @@ class ServiceRepositoryImpl : ServiceRepository {
                 .whereEqualTo("category", category)
                 .get()
                 .await()
-            // Menggunakan toObjects karena LaundryService sudah memakai @DocumentId
             val services = snapshot.toObjects(LaundryService::class.java)
             Log.d(TAG, "Successfully fetched ${services.size} services for category '$category'.")
             Result.success(services)
@@ -64,8 +68,7 @@ class ServiceRepositoryImpl : ServiceRepository {
         val listener = firestore.collection("carts").document(userId).collection("items")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    trySend(Result.failure(error))
-                    return@addSnapshotListener
+                    trySend(Result.failure(error)); return@addSnapshotListener
                 }
                 if (snapshot != null) {
                     val items = snapshot.toObjects(CartItem::class.java)
@@ -78,18 +81,16 @@ class ServiceRepositoryImpl : ServiceRepository {
     override fun addItemToCart(userId: String, service: LaundryService): Flow<Result<Unit>> = flow {
         try {
             val itemRef = firestore.collection("carts").document(userId).collection("items").document(service.id)
-
             firestore.runTransaction { transaction ->
                 val snapshot = transaction.get(itemRef)
                 if (snapshot.exists()) {
                     transaction.update(itemRef, "quantity", FieldValue.increment(1))
                 } else {
-                    // PERBAIKAN DI SINI: Saat membuat item baru, sertakan unit dan category
                     val newItem = CartItem(
                         id = service.id,
                         name = service.title,
                         description = service.description,
-                        price = service.price.toDouble(),
+                        price = service.price, // <-- PERBAIKAN: Tidak perlu .toDouble() lagi
                         quantity = 1,
                         unit = service.unit,
                         category = service.category
@@ -223,5 +224,27 @@ class ServiceRepositoryImpl : ServiceRepository {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>> = callbackFlow {
+        val listener = firestore.collection("transactions")
+            .whereEqualTo("userId", userId) // Filter berdasarkan ID pengguna
+            .orderBy("createdAt", Query.Direction.DESCENDING) // Urutkan dari yang terbaru
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    // Gunakan toObjects karena Transaction model sudah siap
+                    val transactions = snapshot.toObjects(Transaction::class.java)
+                    trySend(Result.success(transactions))
+                } else {
+                    // Kirim list kosong jika tidak ada data
+                    trySend(Result.success(emptyList()))
+                }
+            }
+        // Hapus listener saat tidak digunakan lagi
+        awaitClose { listener.remove() }
     }
 }

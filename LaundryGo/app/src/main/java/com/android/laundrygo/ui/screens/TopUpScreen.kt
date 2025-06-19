@@ -1,9 +1,7 @@
 package com.android.laundrygo.ui.screens
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -17,11 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -32,43 +26,44 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.repository.AuthRepository
 import com.android.laundrygo.repository.AuthRepositoryImpl
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.TopUpState
 import com.android.laundrygo.viewmodel.TopUpUiState
 import com.android.laundrygo.viewmodel.TopUpViewModel
 import java.text.NumberFormat
-import java.util.Locale
+import java.util.*
 
 @Composable
 fun TopUpScreen(
-    onBackClick: () -> Unit,
-    topUpViewModel: TopUpViewModel = viewModel(
-        factory = TopUpViewModel.provideFactory(AuthRepositoryImpl())
-    )
+    // PERBAIKAN: Terima ViewModel sebagai parameter, hapus nilai default
+    viewModel: TopUpViewModel,
+    onBackClick: () -> Unit
 ) {
-    val state by topUpViewModel.state.collectAsState()
+    // Hapus pembuatan ViewModel dari sini
+    // val topUpViewModel: TopUpViewModel = viewModel(...) <-- HAPUS
+
+    val state by viewModel.state.collectAsState()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Menampilkan pesan error dari ViewModel menggunakan Toast
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            topUpViewModel.clearErrorMessage()
+            viewModel.clearErrorMessage()
         }
     }
 
-    // Menampilkan Snackbar saat top up berhasil (menggantikan SuccessScreen)
     LaunchedEffect(state.uiState) {
         if (state.uiState is TopUpUiState.Success) {
             snackbarHostState.showSnackbar(
                 message = "Top Up Berhasil",
                 duration = SnackbarDuration.Short
             )
-            // Setelah snackbar selesai, kembali ke halaman sebelumnya
-            topUpViewModel.finishTopUp()
+            viewModel.finishTopUp()
+            // Menunggu snackbar selesai sebelum navigasi bisa jadi UX yang lebih baik,
+            // tapi untuk sekarang ini sudah cukup.
             onBackClick()
         }
     }
@@ -81,23 +76,22 @@ fun TopUpScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Selalu tampilkan konten utama, visibility diatur oleh dialog di atasnya
             TopUpContent(
                 state = state,
                 onBackClick = onBackClick,
-                onAmountSelected = { topUpViewModel.selectAmount(it) },
-                onCustomAmountChanged = { topUpViewModel.onCustomAmountChanged(it) },
-                onPaymentMethodSelected = { topUpViewModel.selectPaymentMethod(it) },
-                onPayClick = { topUpViewModel.processPayment() }
+                onAmountSelected = { viewModel.selectAmount(it) },
+                onCustomAmountChanged = { viewModel.onCustomAmountChanged(it) },
+                onPaymentMethodSelected = { viewModel.selectPaymentMethod(it) },
+                onPayClick = { viewModel.processPayment() }
             )
 
-            // Menampilkan dialog loading saat state processing (sesuai guideline Material)
             if (state.uiState is TopUpUiState.Processing) {
                 ProcessingDialog()
             }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,10 +109,10 @@ private fun TopUpContent(
             .background(MaterialTheme.colorScheme.surfaceVariant)
     ) {
         TopAppBar(
-            title = { Text("Top Up") },
+            title = { Text("Top Up Saldo") },
             navigationIcon = {
                 IconButton(onClick = onBackClick) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -171,7 +165,7 @@ private fun TopUpContent(
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 )
             ) {
-                Text("Pay", style = MaterialTheme.typography.titleMedium)
+                Text("Bayar Top Up", style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -191,7 +185,7 @@ private fun BalanceCard(balance: Double) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Current Balance",
+                text = "Saldo Anda Saat Ini",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -217,7 +211,7 @@ private fun NominalSelection(
 ) {
     Column {
         Text(
-            text = "Select Top Up Amount",
+            text = "Pilih Nominal Top Up",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp),
@@ -243,7 +237,8 @@ private fun NominalSelection(
                         ButtonDefaults.outlinedButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
                         )
-                    }
+                    },
+                    border = if (isSelected) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Text(text = formatCurrency(amount, true))
                 }
@@ -254,19 +249,11 @@ private fun NominalSelection(
             value = customAmount,
             onValueChange = onCustomAmountChanged,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Or enter other amount") },
-            prefix = { Text("IDR ", color = MaterialTheme.colorScheme.onPrimary) },
+            label = { Text("Atau masukkan nominal lain") },
+            prefix = { Text("Rp ") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            shape = MaterialTheme.shapes.large,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                focusedContainerColor = MaterialTheme.colorScheme.surface
-            )
+            shape = MaterialTheme.shapes.large
         )
     }
 }
@@ -279,7 +266,7 @@ private fun PaymentMethodSelection(
 ) {
     Column {
         Text(
-            text = "Select Payment Method",
+            text = "Pilih Metode Pembayaran",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(bottom = 12.dp),
@@ -307,7 +294,7 @@ private fun PaymentMethodSelection(
                         RadioButton(
                             selected = (method == selectedMethod),
                             onClick = null,
-                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.background)
+                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
                         )
                         Text(
                             text = method,
@@ -330,7 +317,7 @@ private fun PaymentMethodSelection(
 
 @Composable
 private fun ProcessingDialog() {
-    Dialog(onDismissRequest = { /* Do nothing, user can't dismiss */ }) {
+    Dialog(onDismissRequest = { /* Pengguna tidak bisa menutup dialog ini */ }) {
         Card(
             shape = MaterialTheme.shapes.medium,
             colors = CardDefaults.cardColors(
@@ -341,14 +328,10 @@ private fun ProcessingDialog() {
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 20.dp)
             ) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(50.dp),
-                    color = Color.White,
-                    strokeWidth = 5.dp
-                )
+                CircularProgressIndicator()
                 Spacer(modifier = Modifier.width(20.dp))
                 Text(
-                    "Processing Payment...",
+                    "Memproses Pembayaran...",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -360,9 +343,9 @@ private fun ProcessingDialog() {
 private fun formatCurrency(amount: Double, short: Boolean = false): String {
     val format = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     format.maximumFractionDigits = 0
-    val formatted = format.format(amount).replace("Rp", "IDR ")
+    val formatted = format.format(amount).replace("Rp", "Rp ").trim()
     return if (short) {
-        formatted.replace(",000", "K").replace("IDR ", "")
+        formatted.replace(",000", "K").replace("Rp ", "")
     } else {
         formatted
     }
