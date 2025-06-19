@@ -1,5 +1,6 @@
 package com.android.laundrygo.ui.screens
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -19,10 +20,13 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -34,6 +38,13 @@ import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.DashboardViewModel
 import com.android.laundrygo.model.Voucher
+import com.android.laundrygo.ui.theme.BlackText
+import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.ui.theme.DarkBlueText
+import com.android.laundrygo.ui.theme.Grey
+import com.android.laundrygo.ui.theme.LightSteelBlue
+import com.android.laundrygo.ui.theme.White
+import com.android.laundrygo.ui.theme.lightNavy
 
 
 @Composable
@@ -345,11 +356,12 @@ private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
 
 
 @Composable
-private fun PromoSection(
+fun PromoSection(
     vouchers: List<Voucher>,
-    onClaimVoucherClick: (String) -> Unit
+    onClaimVoucherClick: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = modifier.padding(16.dp)) {
         Text(
             text = "Promo",
             style = MaterialTheme.typography.headlineLarge,
@@ -358,62 +370,111 @@ private fun PromoSection(
         )
 
         if (vouchers.isEmpty()) {
-            Text("Tidak ada voucher tersedia", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Tidak ada voucher tersedia saat ini.",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(horizontal = 16.dp)
+            )
         } else {
-            vouchers.forEach { voucher ->
-                VoucherCard(voucher = voucher, onClaimClick = onClaimVoucherClick)
-                Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                vouchers.forEach { voucher ->
+                    M3VoucherCard(
+                        voucher = voucher,
+                        onUseClick = { onClaimVoucherClick(voucher.documentId) }
+                    )
+                }
             }
         }
     }
 }
 
-
+// DESAIN M3 VOUCHER CARD BARU
 @Composable
-private fun VoucherCard(voucher: Voucher, onClaimClick: (String) -> Unit) {
+private fun M3VoucherCard(voucher: Voucher, onUseClick: () -> Unit) {
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(206.dp),
-        shape = MaterialTheme.shapes.medium,
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        modifier = Modifier.width(300.dp), // Beri lebar agar konsisten di LazyRow
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.primary)
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min) // Tinggi fleksibel sesuai konten
         ) {
+            // Bagian Kiri (Ikon dan Aksen)
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
+                    .background(DarkBlue)
+                    .fillMaxHeight()
+                    .padding(horizontal = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ConfirmationNumber,
+                    contentDescription = "Voucher Icon",
+                    tint = White,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
+
+            // Garis putus-putus sebagai pemisah
+            DashedDivider()
+
+            // Bagian Kanan (Detail dan Tombol)
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .weight(1f)
             ) {
                 Text(
                     text = voucher.voucher_code,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = DarkBlueText
                 )
                 Text(
-                    text = "Diskon Rp ${voucher.discount_value}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    text = "Diskon senilai Rp ${voucher.discount_value}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BlackText,
+                    modifier = Modifier.padding(top = 4.dp)
                 )
-            }
-            Button(
-                onClick = { onClaimClick(voucher.documentId) },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                ),
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text("Claim", style = MaterialTheme.typography.labelLarge)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onUseClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DarkBlueText,
+                        contentColor = White
+                    )
+                ) {
+                    Text("Claim", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
+    }
+}
+
+// Composable helper untuk membuat garis putus-putus
+@Composable
+fun DashedDivider() {
+    val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+    Canvas(
+        modifier = Modifier
+            .fillMaxHeight()
+            .width(1.dp)
+    ) {
+        drawLine(
+            color = Grey,
+            start = Offset(0f, 0f),
+            end = Offset(0f, size.height),
+            pathEffect = pathEffect
+        )
     }
 }
 

@@ -62,7 +62,7 @@ class VoucherViewModel : ViewModel() {
             _vouchers.update { current ->
                 current.filterNot { it.documentId == voucherId }
             }
-            _claimStatus.emit("Voucher berhasil diklaim!")
+            _claimStatus.emit("Voucher berhasil digunakan!")
         }
     }
 
