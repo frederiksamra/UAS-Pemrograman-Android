@@ -18,18 +18,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.ui.theme.lightNavy
 import com.android.laundrygo.viewmodel.TransactionViewModel
-import java.text.NumberFormat
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -38,11 +33,19 @@ import java.util.*
 fun TransactionScreen(
     viewModel: TransactionViewModel,
     onBack: () -> Unit,
-    onCheckoutSuccess: () -> Unit
+    onCheckoutSuccess: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
     var showDatePicker by remember { mutableStateOf(false) }
+
+    // Efek untuk menampilkan pesan error dari ViewModel
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { errorMessage ->
+            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+            viewModel.clearError()
+        }
+    }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = DarkBlue,
@@ -169,11 +172,11 @@ fun TransactionScreen(
                     ExposedDropdownMenu(
                         expanded = expandedTime,
                         onDismissRequest = { expandedTime = false },
-                        modifier = Modifier.background(DarkBlue)
+                        modifier = Modifier.background(Color.White)
                     ) {
                         timeSlots.forEach { time ->
                             DropdownMenuItem(
-                                text = { Text(time, color = Cream) },
+                                text = { Text(time, color = DarkBlue) },
                                 onClick = {
                                     viewModel.onTimeSelected(time)
                                     expandedTime = false
@@ -186,10 +189,8 @@ fun TransactionScreen(
 
             Button(
                 onClick = {
-                    viewModel.onCheckout {
-                        Toast.makeText(context, "Pesanan Berhasil Dibuat!", Toast.LENGTH_SHORT)
-                            .show()
-                        onCheckoutSuccess()
+                    viewModel.onCheckout { transactionId ->
+                        onCheckoutSuccess(transactionId)
                     }
                 },
                 enabled = uiState.isFormValid && !uiState.isLoading,
@@ -201,7 +202,7 @@ fun TransactionScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = DarkBlue,
                     contentColor = Color.White,
-                    disabledContainerColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    disabledContainerColor = Color.Gray
                 )
             ) {
                 if (uiState.isLoading) {
@@ -237,19 +238,15 @@ fun TransactionScreen(
 
         Dialog(
             onDismissRequest = { showDatePicker = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false) // Ini tetap penting
+            properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            // ✅ 1. HAPUS SEMUA MODIFIER DARI SURFACE
-            // Biarkan Surface hanya berfungsi sebagai latar belakang berwarna
             Surface(
                 shape = RoundedCornerShape(28.dp),
                 color = DarkBlue
             ) {
-                // ✅ 2. GUNAKAN SATU PADDING KECIL DI COLUMN
-                // Ini menjadi satu-satunya sumber padding, memastikan ruang maksimal.
                 Column(
                     modifier = Modifier
-                        .padding(16.dp) // Gunakan padding yang lebih kecil
+                        .padding(16.dp)
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -270,9 +267,7 @@ fun TransactionScreen(
                             selectedYearContentColor = Cream
                         )
                     )
-
                     Spacer(modifier = Modifier.height(24.dp))
-
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
@@ -303,30 +298,40 @@ private fun formatDate(millis: Long?): String {
     val dateFormat = SimpleDateFormat("EEEE, d MMMM yyyy", Locale("id", "ID"))
     return dateFormat.format(Date(millis))
 }
-
-@Suppress("unused")
-private fun formatCurrency(price: Double): String {
-    val localeID = Locale("in", "ID")
-    val formatRupiah = NumberFormat.getCurrencyInstance(localeID)
-    formatRupiah.maximumFractionDigits = 0
-    return formatRupiah.format(price)
-}
-
-@Preview(showBackground = true)
-@Composable
-private fun TransactionScreenPreview() {
-    val mockFactory = object : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
-            return TransactionViewModel(totalPrice = 50000.0) as T
-        }
-    }
-
-    LaundryGoTheme {
-        TransactionScreen(
-            viewModel = viewModel(factory = mockFactory),
-            onBack = {},
-            onCheckoutSuccess = {}
-        )
-    }
-}
+//
+//@Preview(showBackground = true)
+//@Composable
+//private fun TransactionScreenPreview() {
+//    // 1. Buat Repository Palsu khusus untuk kebutuhan preview ini
+//    class FakeTransactionRepository : ServiceRepository {
+//        override suspend fun getServices(category: String): Result<List<LaundryService>> = Result.success(emptyList())
+//        override fun getCartItems(userId: String): Flow<Result<List<CartItem>>> = flowOf(Result.success(emptyList()))
+//        override fun addItemToCart(userId: String, service: LaundryService): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+//        override fun removeItemFromCart(userId: String, itemId: String): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+//        override fun updateItemQuantity(userId: String, itemId: String, change: Int): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+//        override suspend fun createTransaction(transaction: com.android.laundrygo.model.Transaction): Result<String> = Result.success("tx-123")
+//        override suspend fun clearCart(userId: String): Result<Unit> = Result.success(Unit)
+//        override suspend fun getTransactionById(transactionId: String): Result<Transaction?> {
+//            return Result.success(null)
+//        }
+//    }
+//
+//    // 2. Buat Factory yang menggunakan Repository Palsu tersebut
+//    val mockFactory = object : ViewModelProvider.Factory {
+//        @Suppress("UNCHECKED_CAST")
+//        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+//            return TransactionViewModel(
+//                repository = FakeTransactionRepository(),
+//                totalPrice = 50000.0
+//            ) as T
+//        }
+//    }
+//
+//    LaundryGoTheme {
+//        TransactionScreen(
+//            viewModel = viewModel(factory = mockFactory),
+//            onBack = {},
+//            onCheckoutSuccess = {}
+//        )
+//    }
+//}

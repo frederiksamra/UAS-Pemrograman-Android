@@ -1,4 +1,4 @@
-package com.android.laundrygo.ui.screens.payment
+package com.android.laundrygo.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -19,53 +19,77 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.laundrygo.data.model.OrderItem
+import com.android.laundrygo.model.CartItem
+import com.android.laundrygo.ui.theme.Cream
+import com.android.laundrygo.ui.theme.DarkBlue
 import com.android.laundrygo.viewmodel.PaymentStatus
 import com.android.laundrygo.viewmodel.PaymentUiState
 import com.android.laundrygo.viewmodel.PaymentViewModel
-import com.android.laundrygo.viewmodel.PaymentViewModelFactory
 import java.text.NumberFormat
 import java.util.*
 
-// --- Composable Stateful (Entry Point untuk Navigasi) ---
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentScreen(
     onBackClicked: () -> Unit,
     onPaymentSuccess: () -> Unit,
-    paymentViewModel: PaymentViewModel = viewModel(factory = PaymentViewModelFactory())
+    onNavigateToTopUp: () -> Unit, // <-- TAMBAHKAN PARAMETER NAVIGASI BARU
+    paymentViewModel: PaymentViewModel
 ) {
     val uiState by paymentViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    // LaunchedEffect untuk menangani Toast (sudah benar)
     LaunchedEffect(uiState.paymentStatus) {
         if (uiState.paymentStatus == PaymentStatus.SUCCESS) {
-            Toast.makeText(context, "Payment Successful!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Pembayaran Berhasil!", Toast.LENGTH_SHORT).show()
             onPaymentSuccess()
         } else if (uiState.paymentStatus == PaymentStatus.ERROR) {
-            Toast.makeText(context, "Payment Failed!", Toast.LENGTH_SHORT).show()
+            val errorMessage = uiState.error ?: "Pembayaran Gagal!"
+            Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
+            paymentViewModel.clearErrorStatus()
         }
+    }
+
+    // --- TAMBAHKAN DIALOG DI SINI ---
+    if (uiState.showInsufficientBalanceDialog) {
+        AlertDialog(
+            onDismissRequest = { paymentViewModel.dismissInsufficientBalanceDialog() },
+            title = { Text("Saldo Tidak Cukup") },
+            text = { Text("Saldo Anda tidak cukup untuk melakukan transaksi ini. Apakah Anda ingin melakukan Top Up sekarang?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        paymentViewModel.dismissInsufficientBalanceDialog()
+                        onNavigateToTopUp() // Panggil navigasi ke TopUp
+                    }
+                ) {
+                    Text("Top Up")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { paymentViewModel.dismissInsufficientBalanceDialog() }) {
+                    Text("Batal")
+                }
+            },
+            containerColor = Cream
+        )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Invoice Payment", fontWeight = FontWeight.Bold) },
+                title = { Text("Invoice Pembayaran", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClicked) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 },
-                // ✅ PERBAIKAN: Tambahkan warna untuk ikon dan judul
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = Color.White,
-                    // Warna untuk judul "Invoice Payment"
                     titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    // Warna untuk ikon panah kembali
                     navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             )
@@ -79,49 +103,63 @@ fun PaymentScreen(
         },
         containerColor = Color.White
     ) { paddingValues ->
-        PaymentScreenContent(
-            uiState = uiState,
-            onMethodSelected = { paymentViewModel.onPaymentMethodSelected(it) },
-            paddingValues = paddingValues
-        )
+        // Menangani state Loading dan Error
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (uiState.isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (uiState.error != null) {
+                Text(
+                    text = "Error: ${uiState.error}",
+                    modifier = Modifier.align(Alignment.Center).padding(16.dp),
+                    textAlign = TextAlign.Center
+                )
+            } else {
+                PaymentScreenContent(
+                    uiState = uiState,
+                    onMethodSelected = { paymentViewModel.onPaymentMethodSelected(it) }
+                )
+            }
+        }
     }
 }
 
-// --- Composable Stateless (Hanya untuk Menampilkan UI) ---
 @Composable
 private fun PaymentScreenContent(
     uiState: PaymentUiState,
-    onMethodSelected: (String) -> Unit,
-    paddingValues: PaddingValues
+    onMethodSelected: (String) -> Unit
 ) {
     val darkBlue = Color(0xFF3A4A7A)
     val lightGray = Color(0xFFF0F0F0)
 
     Column(
         modifier = Modifier
-            .padding(paddingValues)
+            .fillMaxSize()
             .padding(horizontal = 16.dp)
             .verticalScroll(rememberScrollState())
     ) {
+        // Tampilkan saldo jika tersedia
+        uiState.userBalance?.let { balance ->
+            BalanceInfoCard(balance = balance)
+            Spacer(modifier = Modifier.height(24.dp))
+        }
+
         TotalPriceCard(totalPrice = uiState.totalPrice, backgroundColor = darkBlue)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = uiState.transactionDate,
+            text = "ID Transaksi: ${uiState.transactionId}",
             color = Color.Gray,
             modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelMedium
         )
         Spacer(modifier = Modifier.height(24.dp))
         OrderDetails(
             items = uiState.orderItems,
-            subtotal = uiState.subtotal,
-            discount = uiState.discount,
-            voucher = uiState.voucher,
             headerColor = lightGray
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            "Select Your Payment Method",
+            "Pilih Metode Pembayaran",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
@@ -129,6 +167,8 @@ private fun PaymentScreenContent(
         PaymentMethodSelection(
             methods = uiState.availablePaymentMethods,
             selectedMethod = uiState.selectedPaymentMethod,
+            userBalance = uiState.userBalance,
+            totalPrice = uiState.totalPrice,
             onMethodSelected = onMethodSelected,
             selectedColor = darkBlue.copy(alpha = 0.1f),
             selectedBorderColor = darkBlue
@@ -137,8 +177,85 @@ private fun PaymentScreenContent(
     }
 }
 
+@Composable
+fun BalanceInfoCard(balance: Double) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(Cream)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text("Saldo Anda", fontWeight = FontWeight.Medium)
+        Text(formatRupiah(balance), fontWeight = FontWeight.Bold, color = DarkBlue)
+    }
+}
 
-// --- Komponen-komponen UI Kecil ---
+@Composable
+fun TotalPriceCard(totalPrice: Double, backgroundColor: Color) {
+    Card(
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "Total Pembayaran",
+                color = Color.White.copy(alpha = 0.8f),
+                fontSize = 16.sp
+            )
+            Text(
+                formatRupiah(totalPrice),
+                color = Color.White,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+// PERBAIKAN: Menggunakan List<CartItem>
+@Composable
+fun OrderDetails(items: List<CartItem>, headerColor: Color) {
+    Column(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color(0xFFFAFAFA))
+            .border(1.dp, headerColor, RoundedCornerShape(8.dp))
+    ) {
+        Row(
+            modifier = Modifier
+                .background(headerColor)
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
+            Text("Produk", Modifier.weight(2f), fontWeight = FontWeight.Bold)
+            Text("Harga", Modifier.weight(1.5f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+            Text("Qty", Modifier.weight(0.5f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+            Text("Subtotal", Modifier.weight(1.5f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
+        }
+        items.forEach { item ->
+            Row(
+                modifier = Modifier
+                    .background(Color.White)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(item.name, Modifier.weight(2f), fontSize = 14.sp)
+                Text(formatRupiah(item.price, false), Modifier.weight(1.5f), textAlign = TextAlign.End, fontSize = 14.sp)
+                Text(item.quantity.toString(), Modifier.weight(0.5f), textAlign = TextAlign.End, fontSize = 14.sp)
+                Text(formatRupiah(item.price * item.quantity, false), Modifier.weight(1.5f), textAlign = TextAlign.End, fontSize = 14.sp)
+            }
+        }
+    }
+}
 
 @Composable
 fun PayButton(isEnabled: Boolean, isLoading: Boolean, onClick: () -> Unit) {
@@ -173,181 +290,107 @@ fun PayButton(isEnabled: Boolean, isLoading: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-fun TotalPriceCard(totalPrice: Int, backgroundColor: Color) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = backgroundColor),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth() // <-- Tambahkan ini
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                "Total Price",
-                color = Color.White.copy(alpha = 0.8f),
-                fontSize = 16.sp
-            )
-            Text(
-                formatRupiah(totalPrice),
-                color = Color.White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-
-@Composable
-fun OrderDetails(items: List<OrderItem>, subtotal: Int, discount: Int, voucher: Int, headerColor: Color) {
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFFFAFAFA))
-            .padding(1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .background(headerColor)
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-        ) {
-            Text("Product", Modifier.weight(2f), fontWeight = FontWeight.Bold)
-            Text("Price", Modifier.weight(1f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
-            Text("Qty", Modifier.weight(1f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
-            Text("Subtotal", Modifier.weight(1f), textAlign = TextAlign.End, fontWeight = FontWeight.Bold)
-        }
-        items.forEach { item ->
-            Row(
-                modifier = Modifier
-                    .background(Color.White)
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(item.name, Modifier.weight(2f), fontSize = 14.sp)
-                Text(formatRupiah(item.price, false), Modifier.weight(1f), textAlign = TextAlign.End, fontSize = 14.sp)
-                Text(item.qty, Modifier.weight(1f), textAlign = TextAlign.End, fontSize = 14.sp)
-                Text(formatRupiah(item.subtotal, false), Modifier.weight(1f), textAlign = TextAlign.End, fontSize = 14.sp)
-            }
-        }
-        HorizontalDivider(color = headerColor)
-        Column(modifier = Modifier
-            .background(Color.White)
-            .padding(12.dp)) {
-            SummaryRow("Subtotal", formatRupiah(subtotal))
-            Spacer(modifier = Modifier.height(4.dp))
-            SummaryRow("Discount", formatRupiah(discount))
-            Spacer(modifier = Modifier.height(4.dp))
-            SummaryRow("Voucher", formatRupiah(voucher))
-        }
-    }
-}
-
-@Composable
-fun SummaryRow(label: String, value: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(label, color = Color.Gray, fontSize = 14.sp)
-        Text(value, fontWeight = FontWeight.Medium, fontSize = 14.sp)
-    }
-}
-
-@Composable
 fun PaymentMethodSelection(
-    methods: List<String>,
+    methods: List<String>, // <-- Kembali menerima List<String>
     selectedMethod: String?,
+    userBalance: Double?, // <-- Terima parameter saldo
+    totalPrice: Double,   // <-- Terima parameter total harga
     onMethodSelected: (String) -> Unit,
     selectedColor: Color,
     selectedBorderColor: Color
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        methods.forEach { method ->
-            val isSelected = method == selectedMethod
+        methods.forEach { methodName ->
+            val isSelected = methodName == selectedMethod
+
+            // Logika untuk menentukan status aktif/nonaktif
+            var isEnabled = true // Secara default, semua metode aktif
+            if (methodName == "Balance") {
+                // Khusus untuk "Balance", cek apakah saldo mencukupi
+                isEnabled = userBalance != null && userBalance >= totalPrice
+            }
+
+            val backgroundColor = when {
+                isSelected -> selectedColor
+                !isEnabled -> Color.LightGray.copy(alpha = 0.5f)
+                else -> Color(0xFFF5F5F5)
+            }
+            val contentColor = when {
+                isSelected -> selectedBorderColor
+                !isEnabled -> Color.Gray
+                else -> Color.Black
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(if (isSelected) selectedColor else Color(0xFFF5F5F5))
+                    .background(backgroundColor)
                     .border(
                         width = if (isSelected) 1.5.dp else 0.dp,
                         color = if (isSelected) selectedBorderColor else Color.Transparent,
                         shape = RoundedCornerShape(8.dp)
                     )
-                    .clickable { onMethodSelected(method) },
+                    // Gunakan variabel isEnabled yang sudah kita tentukan
+                    .clickable(enabled = isEnabled) { onMethodSelected(methodName) },
                 contentAlignment = Alignment.Center
             ) {
-                Text(method, fontWeight = FontWeight.SemiBold, color = if(isSelected) selectedBorderColor else Color.Black)
+                Text(methodName, fontWeight = FontWeight.SemiBold, color = contentColor)
             }
         }
     }
 }
 
-// --- Fungsi Helper ---
-fun formatRupiah(amount: Int, withPrefix: Boolean = true): String {
+fun formatRupiah(amount: Double, withPrefix: Boolean = true): String {
     val localeID = Locale("in", "ID")
     val format = NumberFormat.getCurrencyInstance(localeID)
     format.maximumFractionDigits = 0
-    val result = format.format(amount)
-    return if (withPrefix) result else result.replace("Rp", "").trim()
+    return format.format(amount)
 }
 
-
-// --- Preview ---
-private fun createDummyUiState(paymentStatus: PaymentStatus = PaymentStatus.IDLE): PaymentUiState {
-    val items = listOf(
-        OrderItem("Fast Cleaning Shoes", 20000, "1", 20000),
-        OrderItem("Iron only", 9000, "1,2Kg", 10000)
-    )
-    return PaymentUiState(
-        orderItems = items,
-        subtotal = 30000,
-        totalPrice = 30000,
-        transactionDate = "Kamis, 12 Juni 2025",
-        availablePaymentMethods = listOf("Balance", "E-Wallet", "Bank Transfer"),
-        selectedPaymentMethod = "E-Wallet",
-        paymentStatus = paymentStatus
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Default State")
-@Composable
-fun PaymentScreenPreview() {
-    MaterialTheme {
-        val dummyState = createDummyUiState()
-        Scaffold(
-            topBar = { TopAppBar(title = { Text("Invoice Payment") }, navigationIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "") }) },
-            bottomBar = { PayButton(isEnabled = true, isLoading = false, onClick = {}) }
-        ) { paddingValues ->
-            PaymentScreenContent(
-                uiState = dummyState,
-                onMethodSelected = {},
-                paddingValues = paddingValues
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Preview(showBackground = true, name = "Loading State")
-@Composable
-fun PaymentScreenLoadingPreview() {
-    MaterialTheme {
-        val dummyState = createDummyUiState(paymentStatus = PaymentStatus.LOADING)
-        Scaffold(
-            topBar = { TopAppBar(title = { Text("Invoice Payment") }, navigationIcon = { Icon(Icons.AutoMirrored.Filled.ArrowBack, "") }) },
-            bottomBar = { PayButton(isEnabled = false, isLoading = true, onClick = {}) }
-        ) { paddingValues ->
-            PaymentScreenContent(
-                uiState = dummyState,
-                onMethodSelected = {},
-                paddingValues = paddingValues
-            )
-        }
-    }
-}
+// --- PERBAIKAN UTAMA DI PREVIEW ---
+//@Preview(showBackground = true, name = "Default State")
+//@Composable
+//fun PaymentScreenPreview() {
+//    // 1. Buat FakeRepository yang mengembalikan data Transaksi
+//    class FakePaymentRepository : ServiceRepository {
+//        override suspend fun getTransactionById(transactionId: String): Result<Transaction?> {
+//            val dummyItems = listOf(
+//                CartItem("1", "Deep Cleaning Shoes", "...", 25000.0, 2),
+//                CartItem("2", "Special Long Dress", "...", 35000.0, 1)
+//            )
+//            val dummyTransaction = Transaction(
+//                id = transactionId,
+//                customerName = "John Doe",
+//                pickupDate = "Jumat, 20 Juni 2025",
+//                pickupTime = "10:00",
+//                items = dummyItems,
+//                totalPrice = 85000.0,
+//                createdAt = Date()
+//            )
+//            return Result.success(dummyTransaction)
+//        }
+//        // Implementasi fungsi lain (bisa kosong)
+//        override suspend fun getServices(category: String): Result<List<LaundryService>> = Result.success(emptyList())
+//        override fun getCartItems(userId: String): Flow<Result<List<CartItem>>> = flowOf(Result.success(emptyList()))
+//        override fun addItemToCart(userId: String, service: LaundryService): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+//        override fun removeItemFromCart(userId: String, itemId: String): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+//        override fun updateItemQuantity(userId: String, itemId: String, change: Int): Flow<Result<Unit>> = flowOf(Result.success(Unit))
+//        override suspend fun createTransaction(transaction: Transaction): Result<String> = Result.success("tx-123")
+//        override suspend fun clearCart(userId: String): Result<Unit> = Result.success(Unit)
+//    }
+//
+//    // 2. Buat ViewModel dengan Factory dan FakeRepository
+//    val factory = PaymentViewModelFactory(FakePaymentRepository(), "tx-preview-123")
+//    val previewViewModel: PaymentViewModel = viewModel(factory = factory)
+//
+//    // 3. Gunakan di Composable
+//    LaundryGoTheme {
+//        PaymentScreen(
+//            onBackClicked = { },
+//            onPaymentSuccess = { },
+//            paymentViewModel = previewViewModel
+//        )
+//    }
+//}

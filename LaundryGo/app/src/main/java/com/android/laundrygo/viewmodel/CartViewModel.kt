@@ -1,67 +1,104 @@
 package com.android.laundrygo.viewmodel
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
+
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import com.android.laundrygo.model.CartItem
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.model.CartItem
+import com.android.laundrygo.model.LaundryService
+import com.android.laundrygo.repository.ServiceRepository
+import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class CartViewModel : ViewModel() {
+// --- State Class ---
+data class CartUiState(
+    val cartItems: List<CartItem> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null
+)
 
-    // MutableStateFlow untuk menyimpan daftar item (private)
-    private val _cartItems = MutableStateFlow<List<CartItem>>(emptyList())
+// --- ViewModel ---
+class CartViewModel(private val repository: ServiceRepository) : ViewModel() {
 
-    // StateFlow yang akan diobservasi oleh UI (public, read-only)
-    val cartItems: StateFlow<List<CartItem>> = _cartItems.asStateFlow()
+    private val _uiState = MutableStateFlow(CartUiState())
+    val uiState: StateFlow<CartUiState> = _uiState.asStateFlow()
+
+    private val userId = FirebaseAuth.getInstance().currentUser?.uid
+    private val TAG = "CartViewModel"
 
     init {
-        // Memuat item awal saat ViewModel dibuat
-        loadInitialItems()
+        loadCartItems()
     }
 
-    private fun loadInitialItems() {
-        // Contoh data seperti di XML
-        val initialItems = listOf(
-            CartItem(
-                id = 1,
-                title = "Deep Cleaning",
-                price = "IDR 60.000/Pair of shoes"
-            ),
-            CartItem(
-                id = 2,
-                title = "King Package",
-                description = "Mash express, ironing, pick up and drop off",
-                price = "IDR 35.000/Kg"
-            ),
-            CartItem(
-                id = 3,
-                title = "Special Long Dress",
-                price = "IDR 27.000/Pcs"
-            )
-        )
-        _cartItems.value = initialItems
+    private fun loadCartItems() {
+        if (userId.isNullOrEmpty()) {
+            _uiState.update { it.copy(isLoading = false, error = "User tidak login. Silakan login kembali.") }
+            Log.w(TAG, "User is not logged in. Cannot load cart.")
+            return
+        }
+
+        repository.getCartItems(userId)
+            .onEach { result ->
+                _uiState.update { currentState ->
+                    result.fold(
+                        onSuccess = { items ->
+                            currentState.copy(cartItems = items, isLoading = false, error = null)
+                        },
+                        onFailure = { error ->
+                            Log.e(TAG, "Error loading cart items: ${error.message}")
+                            currentState.copy(isLoading = false, error = error.message)
+                        }
+                    )
+                }
+            }
+            .launchIn(viewModelScope)
     }
 
-    // Fungsi untuk menghapus item dari keranjang
-    fun removeItem(itemId: Int) {
+    fun addItem(service: LaundryService) {
+        if (userId.isNullOrEmpty()) return
+        Log.d(TAG, "Adding item: ${service.title}")
         viewModelScope.launch {
-            val currentItems = _cartItems.value.toMutableList()
-            currentItems.removeAll { it.id == itemId }
-            _cartItems.value = currentItems
+            repository.addItemToCart(userId, service).collect { result ->
+                result.onFailure { error -> Log.e(TAG, "Failed to add item: ${error.message}") }
+            }
         }
     }
 
-    // Fungsi ini bisa diimplementasikan untuk navigasi atau menampilkan total
-    fun onCheckoutClicked() {
-        // Logika untuk proses checkout
-        println("Checkout button clicked!")
+    fun removeItem(itemId: String) {
+        if (userId.isNullOrEmpty()) return
+        Log.d(TAG, "Removing item: $itemId")
+        viewModelScope.launch {
+            repository.removeItemFromCart(userId, itemId).collect { result ->
+                result.onFailure { error -> Log.e(TAG, "Failed to remove item: ${error.message}") }
+            }
+        }
     }
 
-    fun onBackClicked() {
-        // Logika untuk kembali ke layar sebelumnya
-        println("Back button clicked!")
+    fun updateQuantity(itemId: String, change: Int) {
+        if (userId.isNullOrEmpty()) return
+        Log.d(TAG, "Updating quantity for item: $itemId by $change")
+        viewModelScope.launch {
+            repository.updateItemQuantity(userId, itemId, change).collect { result ->
+                result.onFailure { error -> Log.e(TAG, "Failed to update quantity: ${error.message}") }
+            }
+        }
+    }
+}
+
+
+// --- ViewModel Factory ---
+class CartViewModelFactory(private val repository: ServiceRepository) : ViewModelProvider.Factory {
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(CartViewModel::class.java)) {
+            return CartViewModel(repository) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
     }
 }
