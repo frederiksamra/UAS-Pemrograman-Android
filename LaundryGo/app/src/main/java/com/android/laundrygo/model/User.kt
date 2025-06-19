@@ -10,6 +10,6 @@ data class User(
     val phone: String = "",
     val address: String = "",
     val username: String = "",
-    val balance: Long = 0L,
+    val balance: Double = 0.0,
     @ServerTimestamp val createdAt: Timestamp? = null
 )

@@ -104,7 +104,7 @@ fun TopUpScreen(
 private fun TopUpContent(
     state: TopUpState,
     onBackClick: () -> Unit,
-    onAmountSelected: (Long) -> Unit,
+    onAmountSelected: (Double) -> Unit,
     onCustomAmountChanged: (String) -> Unit,
     onPaymentMethodSelected: (String) -> Unit,
     onPayClick: () -> Unit
@@ -179,7 +179,7 @@ private fun TopUpContent(
 
 
 @Composable
-private fun BalanceCard(balance: Long) {
+private fun BalanceCard(balance: Double) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
@@ -208,11 +208,11 @@ private fun BalanceCard(balance: Long) {
 
 @Composable
 private fun NominalSelection(
-    amounts: List<Long>,
-    selectedAmount: Long?,
+    amounts: List<Double>,
+    selectedAmount: Double?,
     customAmount: String,
     isCustomAmountSelected: Boolean,
-    onAmountSelected: (Long) -> Unit,
+    onAmountSelected: (Double) -> Unit,
     onCustomAmountChanged: (String) -> Unit
 ) {
     Column {
@@ -357,7 +357,7 @@ private fun ProcessingDialog() {
     }
 }
 
-private fun formatCurrency(amount: Long, short: Boolean = false): String {
+private fun formatCurrency(amount: Double, short: Boolean = false): String {
     val format = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
     format.maximumFractionDigits = 0
     val formatted = format.format(amount).replace("Rp", "IDR ")
@@ -373,7 +373,7 @@ private fun formatCurrency(amount: Long, short: Boolean = false): String {
 private fun TopUpScreenPreview() {
     LaundryGoTheme(darkTheme = false) {
         TopUpContent(
-            state = TopUpState(selectedAmount = 50000),
+            state = TopUpState(selectedAmount = 50000.0),
             onBackClick = {},
             onAmountSelected = {},
             onCustomAmountChanged = {},

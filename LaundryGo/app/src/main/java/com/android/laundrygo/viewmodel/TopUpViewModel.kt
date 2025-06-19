@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.android.laundrygo.repository.AuthRepository
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -17,10 +16,10 @@ sealed class TopUpUiState {
 }
 
 data class TopUpState(
-    val currentBalance: Long = 0L, // Nilai awal 0, akan di-fetch dari Firestore
-    val topUpAmounts: List<Long> = listOf(10000, 20000, 25000, 50000, 75000, 100000),
+    val currentBalance: Double = 0.0, // Nilai awal 0, akan di-fetch dari Firestore
+    val topUpAmounts: List<Double> = listOf(10000.0, 20000.0, 25000.0, 50000.0, 75000.0, 100000.0),
     val paymentMethods: List<String> = listOf("E-Wallet (GoPay, OVO, etc)", "Virtual Account", "Credit/Debit Card"),
-    val selectedAmount: Long? = null,
+    val selectedAmount: Double? = null,
     val selectedPaymentMethod: String? = "E-Wallet (GoPay, OVO, etc)",
     val customAmount: String = "",
     val isCustomAmountSelected: Boolean = false,
@@ -47,7 +46,7 @@ class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
         }
     }
 
-    fun selectAmount(amount: Long) {
+    fun selectAmount(amount: Double) {
         _state.update {
             it.copy(
                 selectedAmount = amount,
@@ -74,13 +73,12 @@ class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
         _state.update { it.copy(selectedPaymentMethod = method) }
     }
 
-    // DIUBAH TOTAL: Logika proses pembayaran yang sebenarnya
     fun processPayment() {
         val currentState = _state.value
         val amountToAdd = if (currentState.isCustomAmountSelected) {
-            currentState.customAmount.toLongOrNull() ?: 0L
+            currentState.customAmount.toDoubleOrNull() ?: 0.0
         } else {
-            currentState.selectedAmount ?: 0L
+            currentState.selectedAmount ?: 0.0
         }
 
         if (amountToAdd <= 0) {
@@ -95,10 +93,10 @@ class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _state.update { it.copy(uiState = TopUpUiState.Processing) }
 
+            // Tipe data `amountToAdd` sekarang adalah Double, cocok dengan fungsi repository yang akan kita perbaiki
             val result = authRepository.performTopUp(amountToAdd)
 
             result.onSuccess {
-                // Jika berhasil, fetch ulang profil untuk mendapatkan saldo terbaru
                 fetchCurrentUserBalance()
                 _state.update { it.copy(uiState = TopUpUiState.Success) }
             }.onFailure { exception ->

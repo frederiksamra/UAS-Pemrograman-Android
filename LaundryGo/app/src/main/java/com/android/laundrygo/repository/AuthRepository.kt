@@ -16,7 +16,7 @@ interface AuthRepository {
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
     suspend fun getUserProfile(): Result<User>
     suspend fun updateUserProfile(user: User): Result<Unit>
-    suspend fun performTopUp(amount: Long): Result<Unit>
+    suspend fun performTopUp(amount: Double): Result<Unit>
     fun logout()
 }
 
@@ -112,7 +112,7 @@ class AuthRepositoryImpl : AuthRepository {
     }
 
     // Fungsi untuk Top Up
-    override suspend fun performTopUp(amount: Long): Result<Unit> {
+    override suspend fun performTopUp(amount: Double): Result<Unit> {
         return try {
             val uid = auth.currentUser?.uid ?: throw Exception("User not logged in.")
             if (amount <= 0) {

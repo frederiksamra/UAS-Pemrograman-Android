@@ -93,7 +93,7 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
         }
     }
 
-    private fun formatCurrency(amount: Long): String {
+    private fun formatCurrency(amount: Double): String {
         val format = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
         format.maximumFractionDigits = 0
         return format.format(amount).replace("Rp", "").trim()
