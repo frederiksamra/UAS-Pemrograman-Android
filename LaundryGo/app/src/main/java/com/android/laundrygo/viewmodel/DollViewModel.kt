@@ -29,7 +29,7 @@ class DollViewModel(private val repository: ServiceRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val result = repository.getServices("dolls")
+            val result = repository.getServices("doll")
 
             result.onSuccess { services ->
                 _uiState.update { it.copy(isLoading = false, services = services) }
@@ -51,4 +51,5 @@ class DollViewModel(private val repository: ServiceRepository) : ViewModel() {
                 }
             }
     }
+
 }
