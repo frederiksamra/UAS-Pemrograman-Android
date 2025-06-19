@@ -1,24 +1,54 @@
 package com.android.laundrygo.viewmodel
 
-import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
-import com.android.laundrygo.model.ServiceItem
-import com.android.laundrygo.model.parsePrice
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.model.LaundryService
+import com.android.laundrygo.repository.ServiceRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class BagViewModel : ViewModel() {
-    val services = listOf(
-        ServiceItem("Deep Cleaning Bag", null, "IDR 70.000/Pcs", 0xFFF5F5F5),
-        ServiceItem("Premium Cleaning Bag", null, "IDR 90.000/Pcs", 0xFFFFFDE7),
-        ServiceItem("Fast Cleaning Bag", null, "IDR 40.000/Pcs", 0xFFF5F5F5)
-    )
-    val cart = mutableStateListOf<ServiceItem>()
-    fun addToCart(item: ServiceItem) {
-        cart.add(item)
+data class BagUiState(
+    val isLoading: Boolean = true,
+    val services: List<LaundryService> = emptyList(),
+    val error: String? = null
+)
+
+class BagViewModel(private val repository: ServiceRepository) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(BagUiState())
+    val uiState = _uiState.asStateFlow()
+
+    init {
+        fetchBagServices()
     }
-    fun removeFromCart(item: ServiceItem) {
-        cart.remove(item)
+
+    private fun fetchBagServices() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+
+            val result = repository.getServices("bag")
+
+            result.onSuccess { services ->
+                _uiState.update { it.copy(isLoading = false, services = services) }
+            }.onFailure { error ->
+                _uiState.update { it.copy(isLoading = false, error = error.message) }
+            }
+        }
     }
-    fun getTotalPrice(): Int {
-        return cart.sumOf { parsePrice(it.price) }
+
+    companion object {
+        fun provideFactory(repository: ServiceRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    if (modelClass.isAssignableFrom(BagViewModel::class.java)) {
+                        return BagViewModel(repository) as T
+                    }
+                    throw IllegalArgumentException("Unknown ViewModel class")
+                }
+            }
     }
 }
