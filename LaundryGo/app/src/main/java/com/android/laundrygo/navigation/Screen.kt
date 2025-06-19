@@ -22,4 +22,5 @@ sealed class Screen(val route: String) {
     }
     data object Transaction : Screen("transaction_screen")
     data object Payment : Screen ("payment_screen")
+    data object InProcess : Screen("in_process_screen")
 }

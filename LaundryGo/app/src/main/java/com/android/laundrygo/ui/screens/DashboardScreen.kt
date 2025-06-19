@@ -1,3 +1,5 @@
+
+
 package com.android.laundrygo.ui.screens
 
 import androidx.compose.foundation.Canvas
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -30,74 +31,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.R
 import com.android.laundrygo.model.User
-import com.android.laundrygo.repository.AuthRepositoryImpl
-import com.android.laundrygo.ui.InitialsProfilePicture
-import com.android.laundrygo.ui.theme.LaundryGoTheme
-import com.android.laundrygo.viewmodel.DashboardViewModel
 import com.android.laundrygo.model.Voucher
-import com.android.laundrygo.ui.theme.BlackText
-import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.DarkBlueText
-import com.android.laundrygo.ui.theme.Grey
-import com.android.laundrygo.ui.theme.LightSteelBlue
-import com.android.laundrygo.ui.theme.White
-import com.android.laundrygo.ui.theme.lightNavy
+import com.android.laundrygo.ui.InitialsProfilePicture
+import com.android.laundrygo.ui.theme.*
+import com.android.laundrygo.viewmodel.DashboardViewModel
 
-
+// --- PERBAIKAN UTAMA: FUNGSI INTI ---
 @Composable
 fun DashboardScreen(
-    onNavigateToServiceType: () -> Unit = {},
-    onNavigateToLocation: () -> Unit = {},
-    onNavigateToCart: () -> Unit = {},
-    onNavigateToVoucher: () -> Unit = {},
-    onNavigateToTopUp: () -> Unit = {},
-    onNavigateToProfile: () -> Unit = {},
-    onNavigateToHistory: () -> Unit = {}
-) {
-    val repository = AuthRepositoryImpl()
-    val factory = DashboardViewModel.provideFactory(repository)
-    val viewModel: DashboardViewModel = viewModel(factory = factory)
+    // 1. Terima ViewModel dari luar (NavGraph)
+    viewModel: DashboardViewModel,
 
-    val user by viewModel.user.observeAsState(null)
-    val userName by viewModel.userName.observeAsState("User")
-    val userBalance by viewModel.userBalance.observeAsState("0")
-    val error by viewModel.error.observeAsState()
-    val vouchers by viewModel.vouchers.observeAsState(emptyList())
-
-    // --- SUDAH CUKUP MEMANGGIL 1x di dalam DashboardScreenContent ---
-    DashboardScreenContent(
-        user = user,
-        userName = userName,
-        userBalance = userBalance,
-        error = error,
-        onTopUpClick = onNavigateToTopUp,
-        onSearchClick = { /* Handle search */ },
-        onFeatureClick = { feature -> /* Handle feature clicks */ },
-        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
-        onNavigateToServiceType = onNavigateToServiceType,
-        onNavigateToLocation = onNavigateToLocation,
-        onNavigateToCart = onNavigateToCart,
-        onNavigateToVoucher = onNavigateToVoucher,
-        onNavigateToTopUp = onNavigateToTopUp,
-        onNavigateToProfile = onNavigateToProfile,
-        onNavigateToHistory = onNavigateToHistory,
-        vouchers = vouchers // tambahkan vouchers ke parameter
-    )
-}
-
-@Composable
-private fun DashboardScreenContent(
-    user: User?,
-    userName: String,
-    userBalance: String,
-    error: String?,
-    onTopUpClick: () -> Unit,
-    onSearchClick: () -> Unit,
-    onFeatureClick: (String) -> Unit,
-    onClaimVoucherClick: (String) -> Unit,
+    // 2. Navigasi tetap sebagai parameter
     onNavigateToServiceType: () -> Unit,
     onNavigateToLocation: () -> Unit,
     onNavigateToCart: () -> Unit,
@@ -105,7 +52,53 @@ private fun DashboardScreenContent(
     onNavigateToTopUp: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onNavigateToHistory: () -> Unit,
-    vouchers: List<Voucher> // ✅ Tambahkan ini
+    onNavigateToInProcess: () -> Unit
+) {
+    // Ambil semua state dari ViewModel yang sudah diberikan
+    val user by viewModel.user.observeAsState(null)
+    val userName by viewModel.userName.observeAsState("User")
+    val userBalance by viewModel.userBalance.observeAsState("Rp 0")
+    val error by viewModel.error.observeAsState()
+    val vouchers by viewModel.vouchers.observeAsState(emptyList())
+
+    // Panggil konten UI dengan state yang sudah didapat
+    DashboardScreenContent(
+        user = user,
+        userName = userName,
+        userBalance = userBalance,
+        error = error,
+        vouchers = vouchers,
+        onTopUpClick = onNavigateToTopUp,
+        onSearchClick = { /* TODO: Implement search */ },
+        onFeatureClick = { featureId ->
+            when (featureId) {
+                "service_type" -> onNavigateToServiceType()
+                "nearest_location" -> onNavigateToLocation()
+                "cart" -> onNavigateToCart()
+                "voucher" -> onNavigateToVoucher()
+                "top_up" -> onNavigateToTopUp()
+                "history" -> onNavigateToHistory()
+                "in_process" -> onNavigateToInProcess() // Tambahkan handler untuk "In Process"
+            }
+        },
+        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
+        onNavigateToProfile = onNavigateToProfile
+    )
+}
+
+// Composable ini bersifat 'stateless' dan hanya menampilkan UI
+@Composable
+private fun DashboardScreenContent(
+    user: User?,
+    userName: String,
+    userBalance: String,
+    error: String?,
+    vouchers: List<Voucher>,
+    onTopUpClick: () -> Unit,
+    onSearchClick: () -> Unit,
+    onFeatureClick: (String) -> Unit,
+    onClaimVoucherClick: (String) -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -124,9 +117,7 @@ private fun DashboardScreenContent(
 
         error?.let {
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
             ) {
                 Text(
@@ -137,19 +128,8 @@ private fun DashboardScreenContent(
             }
         }
 
-        FeaturesSection(onFeatureClick = { featureId ->
-            when (featureId) {
-                "service_type" -> onNavigateToServiceType()
-                "nearest_location" -> onNavigateToLocation()
-                "cart" -> onNavigateToCart()
-                "voucher" -> onNavigateToVoucher()
-                "top_up" -> onNavigateToTopUp()
-                "history" -> onNavigateToHistory()
-                else -> onFeatureClick(featureId)
-            }
-        })
+        FeaturesSection(onFeatureClick = onFeatureClick)
 
-        // ✅ Panggil PromoSection di sini saja
         PromoSection(vouchers = vouchers, onClaimVoucherClick = onClaimVoucherClick)
     }
 }
@@ -486,74 +466,74 @@ sealed class IconType {
 }
 data class FeatureItem(val name: String, val icon: IconType, val id: String)
 
-
-@Preview(showBackground = true, name = "Dashboard Normal State")
-@Composable
-fun DashboardScreenPreview() {
-    LaundryGoTheme {
-        DashboardScreenContent(
-            user = User(userId = "preview_id", name = "Saoirse"),
-            userName = "Saoirse",
-            userBalance = "1.500.000",
-            error = null,
-            onTopUpClick = {},
-            onSearchClick = {},
-            onFeatureClick = {},
-            onClaimVoucherClick = {},
-            onNavigateToServiceType = {},
-            onNavigateToLocation = {},
-            onNavigateToCart = {},
-            onNavigateToVoucher = {},
-            onNavigateToTopUp = {},
-            onNavigateToProfile = {},
-            onNavigateToHistory = {},
-            vouchers =listOf(
-                Voucher(
-                    voucher_code = "DISKON10",
-                    discount_type = "fixed",
-                    discount_value = 10000,
-                    is_active = true,
-                    valid_from = null,
-                    valid_until = null,
-                    documentId = "voucher_001"
-                )
-            )
-        )
-    }
-}
-
-@Preview(showBackground = true, name = "Dashboard Error State")
-@Composable
-fun DashboardScreenErrorPreview() {
-    LaundryGoTheme {
-        // Preview untuk kondisi saat ada error
-        DashboardScreenContent(
-            user = null,
-            userName = "User",
-            userBalance = "0",
-            error = "Gagal memuat data pengguna. Silakan coba lagi.",
-            onTopUpClick = {},
-            onSearchClick = {},
-            onFeatureClick = {},
-            onClaimVoucherClick = {},
-            onNavigateToServiceType = {},
-            onNavigateToLocation = {},
-            onNavigateToCart = {},
-            onNavigateToVoucher = {},
-            onNavigateToTopUp = {},
-            onNavigateToProfile = {},
-            onNavigateToHistory = {},
-            vouchers =listOf(
-                Voucher(
-                    voucher_code = "DISKON10",
-                    discount_type = "fixed",
-                    discount_value = 10000,
-                    is_active = true,
-                    valid_from = null,
-                    valid_until = null,
-                    documentId = "voucher_001"
-                )
-            )
-        )
-    }
-}
+//
+//@Preview(showBackground = true, name = "Dashboard Normal State")
+//@Composable
+//fun DashboardScreenPreview() {
+//    LaundryGoTheme {
+//        DashboardScreenContent(
+//            user = User(userId = "preview_id", name = "Saoirse"),
+//            userName = "Saoirse",
+//            userBalance = "1.500.000",
+//            error = null,
+//            onTopUpClick = {},
+//            onSearchClick = {},
+//            onFeatureClick = {},
+//            onClaimVoucherClick = {},
+//            onNavigateToServiceType = {},
+//            onNavigateToLocation = {},
+//            onNavigateToCart = {},
+//            onNavigateToVoucher = {},
+//            onNavigateToTopUp = {},
+//            onNavigateToProfile = {},
+//            onNavigateToHistory = {},
+//            vouchers =listOf(
+//                Voucher(
+//                    voucher_code = "DISKON10",
+//                    discount_type = "fixed",
+//                    discount_value = 10000,
+//                    is_active = true,
+//                    valid_from = null,
+//                    valid_until = null,
+//                    documentId = "voucher_001"
+//                )
+//            )
+//        )
+//    }
+//}
+//
+//@Preview(showBackground = true, name = "Dashboard Error State")
+//@Composable
+//fun DashboardScreenErrorPreview() {
+//    LaundryGoTheme {
+//        // Preview untuk kondisi saat ada error
+//        DashboardScreenContent(
+//            user = null,
+//            userName = "User",
+//            userBalance = "0",
+//            error = "Gagal memuat data pengguna. Silakan coba lagi.",
+//            onTopUpClick = {},
+//            onSearchClick = {},
+//            onFeatureClick = {},
+//            onClaimVoucherClick = {},
+//            onNavigateToServiceType = {},
+//            onNavigateToLocation = {},
+//            onNavigateToCart = {},
+//            onNavigateToVoucher = {},
+//            onNavigateToTopUp = {},
+//            onNavigateToProfile = {},
+//            onNavigateToHistory = {},
+//            vouchers =listOf(
+//                Voucher(
+//                    voucher_code = "DISKON10",
+//                    discount_type = "fixed",
+//                    discount_value = 10000,
+//                    is_active = true,
+//                    valid_from = null,
+//                    valid_until = null,
+//                    documentId = "voucher_001"
+//                )
+//            )
+//        )
+//    }
+//}

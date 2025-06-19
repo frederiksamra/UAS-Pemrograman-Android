@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.R
 import com.android.laundrygo.ui.theme.AppTypography
 import com.android.laundrygo.viewmodel.InProcessViewModel
@@ -23,39 +22,32 @@ import com.android.laundrygo.viewmodel.InProcessViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InProcessScreen(
-    viewModel: InProcessViewModel = viewModel(),
-    onBackClick: () -> Unit = {}
+    // Terima ViewModel dari NavGraph
+    viewModel: InProcessViewModel,
+    onBackClick: () -> Unit
 ) {
     val Grey = Color(0xFFE1E1E1)
     val NavGrey = Color(0xFFB0B0B0)
     val TextBlue = Color(0xFF435585)
 
+    // Ambil semua state dari ViewModel
     val selectedIndex by viewModel.selectedIndex.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+    val errorMessage by viewModel.errorMessage.collectAsState()
+    val activeTransaction by viewModel.activeTransaction.collectAsState()
 
     val navItems = listOf("Pick Up", "Washing", "Washed", "Delivery")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "In Process",
-                        fontSize = 20.sp,
-                        color = Color.White
-                    )
-                },
+                title = { Text("Lacak Pesanan", fontSize = 20.sp, color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
+                        Icon(Icons.Filled.ArrowBack, "Kembali", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF26326A)
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color(0xFF26326A))
             )
         }
     ) { padding ->
@@ -66,64 +58,79 @@ fun InProcessScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
+            // Tampilkan Navigasi Tab
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(NavGrey)
-                    .padding(8.dp)
+                modifier = Modifier.fillMaxWidth().background(NavGrey).padding(8.dp)
             ) {
                 navItems.forEachIndexed { index, item ->
                     val isSelected = index == selectedIndex
-                    Text(
-                        text = item,
-                        modifier = Modifier
-                            .weight(1f)
-                            .selectable(
-                                selected = isSelected,
-                                onClick = { viewModel.selectTab(index) }
-                            )
-                            .padding(vertical = 8.dp),
-                        color = if (isSelected) Grey else TextBlue,
-                        fontWeight = FontWeight.Bold,
-                        style = AppTypography.titleLarge,
-                        textAlign = TextAlign.Center
-                    )
+                    Box(modifier = Modifier
+                        .weight(1f)
+                        .selectable(
+                            selected = isSelected,
+                            onClick = { /* Tab tidak bisa diubah manual oleh user */ }
+                        )
+                        .padding(vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = item,
+                            modifier = Modifier.align(Alignment.Center),
+                            color = if (isSelected) Grey else TextBlue,
+                            fontWeight = FontWeight.Bold,
+                            style = AppTypography.titleLarge,
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // Tampilkan Konten berdasarkan state
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                contentAlignment = Alignment.TopCenter
+                modifier = Modifier.fillMaxSize().padding(16.dp),
+                contentAlignment = Alignment.Center
             ) {
-                when (selectedIndex) {
-                    0 -> ProcessContent(
-                        iconRes = R.drawable.on_the_way,
-                        text = "Excited to announce that our courier is on the way to pick up your laundry from your location!\n\nYour convenience is our priority. Sit tight, your clothes are in good hands!",
-                        textColor = TextBlue
-                    )
-                    1 -> ProcessContent(
-                        iconRes = R.drawable.in_process,
-                        text = "Your laundry are currently undergoing the rejuvenating process at our expert hands.\n\nWe're committed to delivering them back to you fresh and clean, just the way you like it!",
-                        textColor = TextBlue
-                    )
-                    2 -> ProcessContent(
-                        iconRes = R.drawable.process_done,
-                        text = "Your order has been impeccably laundered and is ready for delivery!\n\nWe've tallied up the total bill for your convenience. Please review it at your earliest convenience here.",
-                        textColor = TextBlue
-                    )
-                    3 -> ProcessContent(
-                        iconRes = R.drawable.delivery,
-                        text = "Great news! Your freshly cleaned clothes are en route to your doorstep with our dedicated courier.\n\nWe hope you're thrilled with the results. Enjoy your clean and crisp laundry!",
-                        textColor = TextBlue
-                    )
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else if (errorMessage != null) {
+                    Text(text = errorMessage!!, color = Color.Red, textAlign = TextAlign.Center)
+                } else if (activeTransaction == null) {
+                    Text("Tidak ada pesanan yang sedang diproses saat ini.", textAlign = TextAlign.Center)
+                } else {
+                    // Tampilkan konten sesuai tab yang aktif
+                    ProcessContentSwitch(selectedIndex = selectedIndex, textColor = TextBlue)
                 }
             }
         }
+    }
+}
+
+// Composable baru untuk mengatur konten mana yang tampil
+@Composable
+private fun ProcessContentSwitch(selectedIndex: Int, textColor: Color) {
+    when (selectedIndex) {
+        0 -> ProcessContent(
+            iconRes = R.drawable.on_the_way,
+            text = "Kurir kami sedang dalam perjalanan untuk mengambil laundry Anda! Mohon ditunggu.",
+            textColor = textColor
+        )
+        1 -> ProcessContent(
+            iconRes = R.drawable.in_process,
+            text = "Laundry Anda sedang kami cuci dengan bersih. Kami pastikan hasilnya memuaskan!",
+            textColor = textColor
+        )
+        2 -> ProcessContent(
+            iconRes = R.drawable.process_done,
+            text = "Pesanan Anda telah selesai dicuci dan siap untuk diantar kembali.",
+            textColor = textColor
+        )
+        3 -> ProcessContent(
+            iconRes = R.drawable.delivery,
+            text = "Kabar baik! Pakaian bersih Anda sedang dalam perjalanan menuju lokasi Anda.",
+            textColor = textColor
+        )
     }
 }
 

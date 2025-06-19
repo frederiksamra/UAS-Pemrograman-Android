@@ -3,15 +3,12 @@ package com.android.laundrygo.ui.screens
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,27 +16,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.ui.InitialsProfilePicture
-import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.ProfileEvent
 import com.android.laundrygo.viewmodel.ProfileViewModel
-import com.android.laundrygo.viewmodel.ProfileViewModelFactory
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    viewModel: ProfileViewModel,
     onNavigateBack: () -> Unit,
-    onLogout: () -> Unit,
-    viewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory())
+    onLogout: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isEditMode by viewModel.isEditMode.collectAsState()
@@ -258,11 +249,39 @@ private fun themedListItemColors() = ListItemDefaults.colors(
     supportingColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
     leadingIconColor = MaterialTheme.colorScheme.onSurface
 )
-
-@Preview(showBackground = true, name = "Display Mode")
-@Composable
-fun ProfileScreenPreview() {
-    LaundryGoTheme {
-        ProfileScreen(onNavigateBack = {}, onLogout = {})
-    }
-}
+//
+//@Preview(showBackground = true, name = "Display Mode")
+//@Composable
+//fun ProfileScreenPreview() {
+//    // 1. Buat Repository Palsu (Fake) khusus untuk preview
+//    class FakeAuthRepository : AuthRepository {
+//        // Implementasi dummy untuk setiap fungsi di interface
+//        override suspend fun registerUser(email: String, password: String, userProfile: User): Result<Unit> = Result.success(Unit)
+//        override suspend fun loginUser(email: String, password: String): Result<Unit> = Result.success(Unit)
+//        override suspend fun loginWithGoogle(idToken: String): Result<Unit> = Result.success(Unit)
+//        override suspend fun sendPasswordResetEmail(email: String): Result<Unit> = Result.success(Unit)
+//        override suspend fun getUserProfile(): Result<User> {
+//            // Berikan data contoh agar preview terlihat bagus
+//            val dummyUser = User(userId = "123", name = "John Doe", email = "john.doe@example.com", balance = 150000.0)
+//            return Result.success(dummyUser)
+//        }
+//        override suspend fun updateUserProfile(user: User): Result<Unit> = Result.success(Unit)
+//        override suspend fun performTopUp(amount: Double): Result<Unit> = Result.success(Unit)
+//        override fun logout() {}
+//    }
+//
+//    // 2. Buat Factory dengan Repository Palsu
+//    val factory = ProfileViewModelFactory(FakeAuthRepository())
+//
+//    // 3. Buat ViewModel menggunakan Factory tersebut
+//    val previewViewModel: ProfileViewModel = viewModel(factory = factory)
+//
+//    // 4. Panggil ProfileScreen dengan ViewModel yang sudah dibuat
+//    LaundryGoTheme {
+//        ProfileScreen(
+//            viewModel = previewViewModel, // <-- Sekarang parameter viewModel sudah diberikan
+//            onNavigateBack = {},
+//            onLogout = {}
+//        )
+//    }
+//}
