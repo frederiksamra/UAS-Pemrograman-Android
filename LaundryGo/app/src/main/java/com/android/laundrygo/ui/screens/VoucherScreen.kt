@@ -19,13 +19,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.model.Voucher
+import com.android.laundrygo.ui.theme.BlackText
+import com.android.laundrygo.ui.theme.Cream
+import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.ui.theme.DarkBlueText
 import com.android.laundrygo.viewmodel.VoucherViewModel
 import com.android.laundrygo.ui.theme.LaundryGoTheme
+import com.android.laundrygo.ui.theme.LightSteelBlue
+import com.android.laundrygo.ui.theme.RedError
+import com.android.laundrygo.ui.theme.White
+import com.android.laundrygo.ui.theme.lightNavy
 
-val VOUCHER_PROMO_BG = Color(0xFF515886)
-val VOUCHER_PROMO_TEXT = Color(0xFFE8E4D9)
-val VOUCHER_CLAIM_BUTTON_BG = Color(0xFF6F65A8)
-val SCREEN_BACKGROUND = Color(0xFFF8F7FC)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,14 +56,19 @@ fun VoucherScreen(
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali"
+                            contentDescription = "Kembali",
+                            tint = DarkBlueText // Menggunakan warna teks utama Anda
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = White, // Sesuai permintaan: TopAppBar putih
+                    titleContentColor = DarkBlueText // Sesuai permintaan: Teks biru tua
+                )
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = SCREEN_BACKGROUND
+        containerColor = White // Menggunakan warna Cream sebagai background layar
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -68,19 +77,20 @@ fun VoucherScreen(
             contentAlignment = Alignment.Center
         ) {
             when {
-                isLoading -> CircularProgressIndicator()
-                error != null -> Text(text = error!!, color = MaterialTheme.colorScheme.error)
-                vouchers.isEmpty() -> Text("Tidak ada voucher yang tersedia saat ini.")
+                isLoading -> CircularProgressIndicator(color = lightNavy)
+                error != null -> Text(text = error!!, color = RedError)
+                vouchers.isEmpty() -> Text("Tidak ada voucher yang tersedia saat ini.", color = DarkBlueText.copy(alpha = 0.7f))
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(vouchers, key = { it.documentId }) { voucher ->
-                        VoucherCard(
+                        // Menggunakan desain kartu yang baru dengan palet warna Anda
+                        NewVoucherCard(
                             voucher = voucher,
                             expiry = voucherViewModel.formatDate(voucher.valid_until),
-                            onClaimClick = { voucherViewModel.claimVoucher(voucher.documentId) }
+                            onUseClick = { voucherViewModel.claimVoucher(voucher.documentId) }
                         )
                     }
                 }
@@ -89,60 +99,88 @@ fun VoucherScreen(
     }
 }
 
+
+// --- DESAIN KARTU VOUCHER BARU DENGAN PALET ANDA ---
 @Composable
-fun VoucherCard(
+fun NewVoucherCard(
     voucher: Voucher,
     expiry: String,
-    onClaimClick: () -> Unit
+    onUseClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = White) // Kartu tetap putih agar menonjol
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Box(
+        Row(
+            modifier = Modifier.height(IntrinsicSize.Min),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Bagian Kiri (Informasi Diskon Utama)
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                    .background(VOUCHER_PROMO_BG)
-                    .padding(horizontal = 20.dp, vertical = 32.dp),
-                contentAlignment = Alignment.Center
+                    .fillMaxHeight()
+                    .background(DarkBlue)
+                    .padding(horizontal = 20.dp, vertical = 16.dp)
+                    .width(100.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = "${voucher.voucher_code} - ${voucher.discount_value}${
-                        if (voucher.discount_type == "percent") "%" else "Rp"
-                    }",
-                    color = VOUCHER_PROMO_TEXT,
-                    fontSize = 26.sp,
+                    text = voucher.discount_value.toString(),
+                    color = White, // Teks diskon utama yang kuat
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = if (voucher.discount_type == "percent") "% OFF" else "K OFF",
+                    color = White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
                 )
             }
-            Row(
+
+            // Bagian Kanan (Detail dan Tombol Aksi)
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .weight(1f)
+                    .padding(16.dp)
             ) {
                 Text(
-                    text = "Berlaku s.d. $expiry",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color.Gray
+                    text = "Voucher Diskon",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = BlackText // Teks judul yang paling jelas
                 )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = voucher.voucher_code,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = lightNavy // Kode voucher dengan warna aksen
+                )
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = "Berlaku hingga $expiry",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BlackText.copy(alpha = 0.6f) // Teks sekunder yang lebih lembut
+                )
+                Spacer(Modifier.height(12.dp))
                 Button(
-                    onClick = onClaimClick,
-                    shape = MaterialTheme.shapes.small,
+                    onClick = onUseClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = VOUCHER_CLAIM_BUTTON_BG,
-                        contentColor = Color.White
+                        containerColor = DarkBlueText, // Tombol aksi utama
+                        contentColor = White
                     )
                 ) {
-                    Text(text = "Claim", fontWeight = FontWeight.SemiBold)
+                    Text(text = "Use", fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
+
+
