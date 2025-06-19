@@ -1,25 +1,22 @@
 package com.android.laundrygo.ui.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.laundrygo.R
 import com.android.laundrygo.viewmodel.HistoryDetailViewModel
 import com.android.laundrygo.viewmodel.ProductDetail
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-
+import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +70,8 @@ fun HistoryDetailScreen(
                 "Address" to state.address
             )
 
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Product List
             SectionTitle("Product Details")
             ProductHeaderRow()
@@ -92,21 +91,39 @@ fun HistoryDetailScreen(
     }
 }
 
-
 @Composable
 fun DetailCard(vararg rows: Pair<String, String>) {
+    val DarkBlue = Color(0xFF344970)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             rows.forEach { (label, value) ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = label)
-                    Text(text = value, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = label,
+                        fontSize = 14.sp,
+                        color = DarkBlue,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = value,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DarkBlue,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.End
+                    )
                 }
-                Spacer(modifier = Modifier.height(8.dp))
             }
         }
     }
@@ -114,40 +131,66 @@ fun DetailCard(vararg rows: Pair<String, String>) {
 
 @Composable
 fun ProductHeaderRow() {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         Text("Product", fontWeight = FontWeight.Bold, modifier = Modifier.weight(2f))
         Text("Price", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         Text("Qty", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text("Subtotal", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            Text("Subtotal", fontWeight = FontWeight.Bold)
+        }
     }
 }
 
 @Composable
 fun ProductRow(product: ProductDetail) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
         Text(product.name, modifier = Modifier.weight(2f))
         Text(product.price, modifier = Modifier.weight(1f))
         Text(product.qty, modifier = Modifier.weight(1f))
-        Text(product.subtotal, modifier = Modifier.weight(1f))
+        Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
+            Text(
+                text = product.subtotal,
+                maxLines = 1
+            )
+        }
     }
-    Spacer(modifier = Modifier.height(8.dp))
 }
+
 
 @Composable
 fun SummaryRow(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Text(label)
-        Text(value, fontWeight = FontWeight.Bold)
+    val DarkBlue = Color(0xFF344970)
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(text = label, color = DarkBlue)
+        Text(text = value, fontWeight = FontWeight.Bold, color = DarkBlue)
     }
     Spacer(modifier = Modifier.height(4.dp))
 }
 
 @Composable
 fun SectionTitle(text: String) {
+    val DarkBlue = Color(0xFF344970)
+
     Text(
         text = text,
         fontSize = 16.sp,
         fontWeight = FontWeight.SemiBold,
+        color = DarkBlue,
         modifier = Modifier.padding(vertical = 8.dp)
     )
 }
