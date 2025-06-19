@@ -15,52 +15,33 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.android.laundrygo.ui.theme.LaundryGoTheme
+import com.android.laundrygo.model.Voucher
 import com.android.laundrygo.viewmodel.VoucherViewModel
+import com.android.laundrygo.ui.theme.LaundryGoTheme
 
-// Definisi warna dan data class tidak berubah
 val VOUCHER_PROMO_BG = Color(0xFF515886)
 val VOUCHER_PROMO_TEXT = Color(0xFFE8E4D9)
 val VOUCHER_CLAIM_BUTTON_BG = Color(0xFF6F65A8)
 val SCREEN_BACKGROUND = Color(0xFFF8F7FC)
 
-data class VoucherInfo(
-    val id: Int,
-    val title: String,
-    val expiryDate: String
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoucherScreen(
     onBackClick: () -> Unit,
-    // ================== PERUBAHAN DI SINI ==================
-    // Nama parameter diubah dari 'viewModel' menjadi 'voucherViewModel' untuk menghindari konflik.
     voucherViewModel: VoucherViewModel = viewModel()
-    // =======================================================
 ) {
-    // Mengumpulkan (collect) state dari ViewModel
-    // ================== PERUBAHAN DI SINI ==================
-    // Gunakan nama parameter yang baru.
     val vouchers by voucherViewModel.vouchers.collectAsState()
     val isLoading by voucherViewModel.isLoading.collectAsState()
     val error by voucherViewModel.error.collectAsState()
-    // =======================================================
-
-    // State untuk Snackbar (notifikasi)
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Mendengarkan event dari ViewModel untuk menampilkan Snackbar
     LaunchedEffect(Unit) {
-        // ================== PERUBAHAN DI SINI ==================
         voucherViewModel.claimStatus.collect { message ->
             snackbarHostState.showSnackbar(message)
         }
-        // =======================================================
     }
 
     Scaffold(
@@ -86,24 +67,20 @@ fun VoucherScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (error != null) {
-                Text(text = error!!, color = MaterialTheme.colorScheme.error)
-            } else if (vouchers.isEmpty()) {
-                Text(text = "Tidak ada voucher yang tersedia saat ini.")
-            } else {
-                LazyColumn(
+            when {
+                isLoading -> CircularProgressIndicator()
+                error != null -> Text(text = error!!, color = MaterialTheme.colorScheme.error)
+                vouchers.isEmpty() -> Text("Tidak ada voucher yang tersedia saat ini.")
+                else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(vouchers, key = { it.id }) { voucher ->
+                    items(vouchers, key = { it.documentId }) { voucher ->
                         VoucherCard(
                             voucher = voucher,
-                            // ================== PERUBAHAN DI SINI ==================
-                            onClaimClick = { voucherViewModel.claimVoucher(voucher.id) }
-                            // =======================================================
+                            expiry = voucherViewModel.formatDate(voucher.valid_until),
+                            onClaimClick = { voucherViewModel.claimVoucher(voucher.documentId) }
                         )
                     }
                 }
@@ -112,14 +89,12 @@ fun VoucherScreen(
     }
 }
 
-
-// Composable VoucherCard tidak perlu diubah
 @Composable
 fun VoucherCard(
-    voucher: VoucherInfo,
+    voucher: Voucher,
+    expiry: String,
     onClaimClick: () -> Unit
 ) {
-    // ... isi kode VoucherCard sama seperti sebelumnya ...
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.medium,
@@ -136,9 +111,11 @@ fun VoucherCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = voucher.title,
+                    text = "${voucher.voucher_code} - ${voucher.discount_value}${
+                        if (voucher.discount_type == "percent") "%" else "Rp"
+                    }",
                     color = VOUCHER_PROMO_TEXT,
-                    fontSize = 28.sp,
+                    fontSize = 26.sp,
                     fontWeight = FontWeight.ExtraBold,
                     textAlign = TextAlign.Center
                 )
@@ -151,7 +128,7 @@ fun VoucherCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = voucher.expiryDate,
+                    text = "Berlaku s.d. $expiry",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.Gray
                 )
@@ -167,14 +144,5 @@ fun VoucherCard(
                 }
             }
         }
-    }
-}
-
-
-@Preview(showBackground = true)
-@Composable
-private fun VoucherScreenPreview() {
-    LaundryGoTheme {
-        VoucherScreen(onBackClick = {})
     }
 }
