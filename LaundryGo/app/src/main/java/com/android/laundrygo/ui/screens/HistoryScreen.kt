@@ -2,10 +2,10 @@ package com.android.laundrygo.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -14,64 +14,72 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.model.Transaction
+import com.android.laundrygo.ui.theme.DarkBlue
 import com.android.laundrygo.viewmodel.HistoryViewModel
-import androidx.compose.animation.animateContentSize
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Shape
+import java.text.SimpleDateFormat
+import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
-    viewModel: HistoryViewModel = viewModel(),
+    // 1. Terima ViewModel dari NavGraph, jangan buat di sini
+    viewModel: HistoryViewModel,
     onBack: () -> Unit,
     onCheckClick: (String) -> Unit
 ) {
-    val historyItems by viewModel.historyList.collectAsState()
+    // 2. Ambil seluruh UiState dari ViewModel
+    val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        text = "History",
-                        fontSize = 20.sp,
-                        color = Color.White
-                    )
-                },
+                title = { Text("Riwayat Transaksi", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = Icons.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
-                        )
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali", tint = Color.White)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF26326A)
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBlue)
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .verticalScroll(rememberScrollState())
-                .background(Color(0xFFF8F9FD)) // Light grey background
+                .background(Color(0xFFF0F2F5)), // Warna latar yang lebih lembut
+            contentAlignment = Alignment.Center
         ) {
-            historyItems.forEach { item ->
-                HistoryItem(
-                    orderId = item.orderId,
-                    status = item.status,
-                    statusColor = viewModel.getStatusColor(item.status),
-                    date = item.date,
-                    onCheckClick = onCheckClick
+            // 3. Tampilkan UI berdasarkan kondisi dari UiState
+            if (uiState.isLoading) {
+                CircularProgressIndicator()
+            } else if (uiState.error != null) {
+                Text(
+                    text = "Error: ${uiState.error}",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
                 )
+            } else if (uiState.transactions.isEmpty()) {
+                Text("Belum ada riwayat transaksi.", modifier = Modifier.padding(16.dp))
+            } else {
+                // 4. Gunakan LazyColumn untuk performa yang lebih baik
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(uiState.transactions, key = { it.id }) { transaction ->
+                        // 5. Kirim seluruh objek Transaction ke item
+                        HistoryItem(
+                            transaction = transaction,
+                            onCheckClick = onCheckClick
+                        )
+                    }
+                }
             }
         }
     }
@@ -79,19 +87,22 @@ fun HistoryScreen(
 
 @Composable
 fun HistoryItem(
-    orderId: String,
-    status: String,
-    statusColor: Color,
-    date: String,
+    transaction: Transaction, // Terima objek Transaction lengkap
     onCheckClick: (String) -> Unit
 ) {
+    // 6. Logika untuk menentukan warna sekarang ada di dalam Composable (Lapisan UI)
+    val statusColor = when (transaction.status) {
+        "Lunas" -> Color(0xFF1F9E56) // Hijau
+        "Menunggu Pembayaran" -> Color(0xFFF2994A) // Oranye
+        "Dicuci", "Selesai Dicuci", "Dalam Pengantaran" -> DarkBlue
+        else -> Color.Gray
+    }
+
     Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 12.dp)
-            .animateContentSize(),
-        shape = MaterialTheme.shapes.extraLarge,
-        elevation = CardDefaults.cardElevation(6.dp)
+        modifier = Modifier.fillMaxWidth(),
+        shape = MaterialTheme.shapes.medium,
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -99,49 +110,51 @@ fun HistoryItem(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // Gunakan data langsung dari objek transaction
                 Text(
-                    text = orderId,
+                    text = "ID: ${transaction.id.take(8).uppercase()}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    color = Color(0xFF26326A)
+                    fontSize = 16.sp,
+                    color = DarkBlue
                 )
                 Surface(
                     color = statusColor.copy(alpha = 0.15f),
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = status,
+                        text = transaction.status,
                         color = statusColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(6.dp))
-
             Text(
-                text = date,
+                // Gunakan fungsi helper untuk memformat tanggal
+                text = transaction.createdAt?.toFormattedString() ?: "Tanggal tidak tersedia",
                 fontSize = 14.sp,
-                color = Color(0xFF666666)
+                color = Color.Gray
             )
-
             Spacer(modifier = Modifier.height(12.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
             ) {
                 Button(
-                    onClick = { onCheckClick(orderId) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF26326A)),
-                    shape = MaterialTheme.shapes.medium
+                    onClick = { onCheckClick(transaction.id) },
+                    colors = ButtonDefaults.buttonColors(containerColor = DarkBlue)
                 ) {
-                    Text(text = "Check", color = Color.White)
+                    Text(text = "Check Detail")
                 }
             }
         }
     }
+}
+
+// Fungsi helper untuk format tanggal, bisa dipindahkan ke file utilitas
+private fun Date.toFormattedString(): String {
+    val format = SimpleDateFormat("EEEE, d MMMM yyyy, HH:mm", Locale("id", "ID"))
+    return format.format(this)
 }

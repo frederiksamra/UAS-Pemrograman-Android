@@ -16,7 +16,7 @@ sealed class TopUpUiState {
 }
 
 data class TopUpState(
-    val currentBalance: Double = 0.0, // Nilai awal 0, akan di-fetch dari Firestore
+    val currentBalance: Double = 0.0,
     val topUpAmounts: List<Double> = listOf(10000.0, 20000.0, 25000.0, 50000.0, 75000.0, 100000.0),
     val paymentMethods: List<String> = listOf("E-Wallet (GoPay, OVO, etc)", "Virtual Account", "Credit/Debit Card"),
     val selectedAmount: Double? = null,
@@ -31,15 +31,21 @@ class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
     private val _state = MutableStateFlow(TopUpState())
     val state = _state.asStateFlow()
 
-    // BARU: Fetch saldo awal saat ViewModel dibuat
     init {
         fetchCurrentUserBalance()
     }
 
     private fun fetchCurrentUserBalance() {
         viewModelScope.launch {
-            authRepository.getUserProfile().onSuccess { user ->
-                _state.update { it.copy(currentBalance = user.balance) }
+            authRepository.getUserProfile().onSuccess { user -> // 'user' bertipe User?
+                // --- PERBAIKAN DI SINI ---
+                if (user != null) {
+                    // Jika user tidak null, kita aman mengakses propertinya
+                    _state.update { it.copy(currentBalance = user.balance) }
+                } else {
+                    // Jika user null, tangani sebagai error
+                    _state.update { it.copy(errorMessage = "Gagal memuat data saldo pengguna.") }
+                }
             }.onFailure { exception ->
                 _state.update { it.copy(errorMessage = "Failed to load balance: ${exception.message}") }
             }
@@ -93,10 +99,10 @@ class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _state.update { it.copy(uiState = TopUpUiState.Processing) }
 
-            // Tipe data `amountToAdd` sekarang adalah Double, cocok dengan fungsi repository yang akan kita perbaiki
             val result = authRepository.performTopUp(amountToAdd)
 
             result.onSuccess {
+                // Fetch ulang saldo setelah berhasil top up
                 fetchCurrentUserBalance()
                 _state.update { it.copy(uiState = TopUpUiState.Success) }
             }.onFailure { exception ->
@@ -125,7 +131,6 @@ class TopUpViewModel(private val authRepository: AuthRepository) : ViewModel() {
         }
     }
 
-    // BARU: Factory untuk membuat instance ViewModel dengan dependensi (pola yang sudah Anda setujui)
     companion object {
         fun provideFactory(
             repository: AuthRepository,

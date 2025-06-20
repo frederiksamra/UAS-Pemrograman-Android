@@ -1,74 +1,76 @@
 package com.android.laundrygo.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.android.laundrygo.model.Voucher
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
+import com.android.laundrygo.repository.AuthRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-class VoucherViewModel : ViewModel() {
+// Definisikan UiState untuk VoucherScreen
+data class VoucherUiState(
+    val vouchers: List<Voucher> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null
+)
 
-    private val db = Firebase.firestore
+class VoucherViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
-    private val _vouchers = MutableStateFlow<List<Voucher>>(emptyList())
-    val vouchers: StateFlow<List<Voucher>> = _vouchers.asStateFlow()
-
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    private val _claimStatus = MutableSharedFlow<String>()
-    val claimStatus: SharedFlow<String> = _claimStatus.asSharedFlow()
+    private val _uiState = MutableStateFlow(VoucherUiState())
+    val uiState: StateFlow<VoucherUiState> = _uiState.asStateFlow()
 
     init {
-        fetchVouchers()
+        // Mengambil voucher PRIBADI milik user
+        fetchMyVouchers()
     }
 
-    fun fetchVouchers() {
+    private fun fetchMyVouchers() {
         viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
-
-            db.collection("vouchers")
-                .whereEqualTo("is_active", true)
-                .get()
-                .addOnSuccessListener { result ->
-                    val now = com.google.firebase.Timestamp.now()
-                    val voucherList = result.mapNotNull { doc ->
-                        val voucher = doc.toObject(Voucher::class.java).copy(documentId = doc.id)
-                        if ((voucher.valid_from == null || now >= voucher.valid_from) &&
-                            (voucher.valid_until == null || now <= voucher.valid_until)) {
-                            voucher
-                        } else null
-                    }
-                    _vouchers.value = voucherList
-                    _isLoading.value = false
-                }
-                .addOnFailureListener {
-                    _error.value = it.message
-                    _isLoading.value = false
-                }
+            _uiState.update { it.copy(isLoading = true) }
+            authRepository.getMyVouchers()
+                .onEach { result ->
+                    result.fold(
+                        onSuccess = { myVouchers ->
+                            _uiState.update { it.copy(isLoading = false, vouchers = myVouchers, error = null) }
+                        },
+                        onFailure = { exception ->
+                            _uiState.update { it.copy(isLoading = false, error = exception.message) }
+                        }
+                    )
+                }.launchIn(this)
         }
     }
 
-    fun claimVoucher(voucherId: String) {
+    // Fungsi ini adalah placeholder untuk masa depan,
+    // misal saat voucher akan diterapkan di keranjang.
+    fun onVoucherUsed(voucherId: String) {
+        // TODO: Implementasi logika penggunaan voucher, misal menandai 'is_used = true' di Firestore
+        // Untuk sekarang, kita bisa tampilkan pesan singkat
         viewModelScope.launch {
-            _vouchers.update { current ->
-                current.filterNot { it.documentId == voucherId }
-            }
-            _claimStatus.emit("Voucher berhasil digunakan!")
+            // Logika untuk menggunakan voucher
         }
     }
 
     fun formatDate(timestamp: com.google.firebase.Timestamp?): String {
-        if (timestamp == null) return "-"
-        val sdf = SimpleDateFormat("EEEE, d MMMM yyyy", Locale.getDefault())
+        if (timestamp == null) return "Tidak ada batas waktu"
+        val sdf = SimpleDateFormat("d MMMM yyyy", Locale("id", "ID"))
         return sdf.format(timestamp.toDate())
+    }
+
+    // Factory untuk ViewModel ini
+    companion object {
+        fun provideFactory(repository: AuthRepository): ViewModelProvider.Factory =
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                    if (modelClass.isAssignableFrom(VoucherViewModel::class.java)) {
+                        return VoucherViewModel(repository) as T
+                    }
+                    throw IllegalArgumentException("Unknown ViewModel class")
+                }
+            }
     }
 }

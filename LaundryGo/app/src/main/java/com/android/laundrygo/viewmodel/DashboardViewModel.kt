@@ -1,6 +1,10 @@
 package com.android.laundrygo.viewmodel
 
-import androidx.lifecycle.*
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.android.laundrygo.model.User
 import com.android.laundrygo.model.Voucher
 import com.android.laundrygo.repository.AuthRepository
@@ -38,15 +42,28 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
     fun fetchUserData() {
         viewModelScope.launch {
             val result = authRepository.getUserProfile()
-            result.onSuccess { user ->
-                _user.value = user
-                _userName.value = user.name.ifEmpty { "User" }
-                _userBalance.value = formatCurrency(user.balance)
-                _error.value = null
+            result.onSuccess { user -> // 'user' di sini sekarang bertipe User? (bisa null)
+
+                // --- PERBAIKAN DI SINI: Lakukan null check ---
+                if (user != null) {
+                    // Jika user tidak null, kita aman mengakses propertinya
+                    _user.value = user
+                    _userName.value = user.name.ifEmpty { "User" }
+                    _userBalance.value = formatCurrency(user.balance)
+                    _error.value = null
+                } else {
+                    // Jika user null (misal, dokumen tidak ada di firestore atau user belum login)
+                    // kita tangani sebagai sebuah kondisi error atau state kosong.
+                    _user.value = null
+                    _userName.value = "User"
+                    _userBalance.value = "Rp 0"
+                    _error.value = "Gagal menemukan profil pengguna."
+                }
+
             }.onFailure { exception ->
                 _user.value = null
                 _userName.value = "User"
-                _userBalance.value = "0"
+                _userBalance.value = "Rp 0"
                 _error.value = "Gagal memuat data: ${exception.message}"
             }
         }
@@ -56,7 +73,6 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
         viewModelScope.launch {
             try {
                 val now = com.google.firebase.Timestamp.now()
-
                 val snapshot = db.collection("vouchers")
                     .whereEqualTo("is_active", true)
                     .get()
@@ -69,7 +85,6 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
                     val validUntilOk = voucher.valid_until == null || voucher.valid_until >= now
                     validFromOk && validUntilOk
                 }
-
                 _vouchers.value = list
             } catch (e: Exception) {
                 _vouchers.value = emptyList()
@@ -78,17 +93,17 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
         }
     }
 
-
     fun claimVoucher(voucherId: String) {
         viewModelScope.launch {
-            try {
-                db.collection("vouchers").document(voucherId)
-                    .update("is_active", false)
-                    .await()
-                loadVouchers()
-                _error.value = null
-            } catch (e: Exception) {
-                _error.value = "Gagal klaim voucher: ${e.message}"
+            // Kita asumsikan authRepository punya fungsi claimVoucher
+            // Jika tidak, logika ini perlu disesuaikan dengan repository Anda
+            val voucherToClaim = vouchers.value?.firstOrNull { it.documentId == voucherId }
+            if (voucherToClaim != null) {
+                authRepository.claimVoucher(voucherToClaim).onFailure { exception ->
+                    _error.value = "Gagal klaim voucher: ${exception.message}"
+                }
+                // loadVouchers() tidak perlu dipanggil di sini jika Anda ingin voucher hilang dari UI secara visual
+                // Atau panggil untuk refresh dari server
             }
         }
     }
@@ -96,7 +111,12 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
     private fun formatCurrency(amount: Double): String {
         val format = NumberFormat.getCurrencyInstance(Locale("in", "ID"))
         format.maximumFractionDigits = 0
-        return format.format(amount).replace("Rp", "").trim()
+        return format.format(amount)
+    }
+
+    fun refreshDashboardData() {
+        fetchUserData()
+        loadVouchers()
     }
 
     companion object {

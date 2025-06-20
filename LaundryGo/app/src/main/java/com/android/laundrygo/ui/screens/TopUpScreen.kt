@@ -294,7 +294,7 @@ private fun PaymentMethodSelection(
                         RadioButton(
                             selected = (method == selectedMethod),
                             onClick = null,
-                            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+                            colors = RadioButtonDefaults.colors(selectedColor = Color.White)
                         )
                         Text(
                             text = method,

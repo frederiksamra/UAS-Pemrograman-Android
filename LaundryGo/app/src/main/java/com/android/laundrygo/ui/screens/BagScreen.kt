@@ -17,31 +17,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.model.LaundryService
-import com.android.laundrygo.repository.ServiceRepositoryImpl
 import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.util.formatRupiah
 import com.android.laundrygo.viewmodel.BagViewModel
-import java.text.NumberFormat
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BagScreen(
+    viewModel: BagViewModel,
     onBack: () -> Unit,
     onAddClick: (LaundryService) -> Unit,
-    onCartClick: () -> Unit,
-    viewModel: BagViewModel = viewModel(
-        factory = BagViewModel.provideFactory(ServiceRepositoryImpl())
-    )
+    onCartClick: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tas") },
+                title = { Text("Layanan Tas") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
@@ -52,12 +47,7 @@ fun BagScreen(
                         Icon(Icons.Default.ShoppingCart, contentDescription = "Keranjang")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
         containerColor = Color.White
@@ -88,7 +78,8 @@ fun BagScreen(
                     ) {
                         itemsIndexed(uiState.services) { index, service ->
                             val cardColor = if (index % 2 == 0) DarkBlue else Cream
-                            ServicePackageCard(
+                            // PERBAIKAN: Panggil BagServiceCard yang sudah kita buat di bawah
+                            BagServiceCard(
                                 service = service,
                                 containerColor = cardColor,
                                 onAddClick = { onAddClick(service) }
@@ -101,8 +92,9 @@ fun BagScreen(
     }
 }
 
+// --- KOMPONEN KARTU KHUSUS UNTUK HALAMAN INI ---
 @Composable
-private fun ServicePackageCard(
+private fun BagServiceCard( // <-- Fungsi baru yang kita buat dengan menyalin DollServiceCard
     service: LaundryService,
     containerColor: Color,
     onAddClick: () -> Unit
@@ -111,6 +103,8 @@ private fun ServicePackageCard(
     val titleColor = if (isCreamCard) DarkBlue else Color.White
     val descriptionColor = if (isCreamCard) DarkBlue.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.8f)
     val priceColor = if (isCreamCard) DarkBlue else Color.White
+
+    // Memanggil fungsi utilitas yang sudah kita buat sebelumnya
     val formattedPrice = formatRupiah(service.price)
 
     Card(
@@ -120,9 +114,7 @@ private fun ServicePackageCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -132,7 +124,12 @@ private fun ServicePackageCard(
             ) {
                 Text(service.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = titleColor)
                 Text(service.description, style = MaterialTheme.typography.bodyMedium, color = descriptionColor)
-                Text("${formattedPrice}${service.unit}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold, color = priceColor)
+                Text(
+                    text = "$formattedPrice / ${service.unit}",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = priceColor
+                )
             }
             Spacer(modifier = Modifier.width(16.dp))
             val buttonColors = if (isCreamCard) {
@@ -151,4 +148,3 @@ private fun ServicePackageCard(
         }
     }
 }
-

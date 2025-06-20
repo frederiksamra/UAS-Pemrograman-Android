@@ -1,5 +1,6 @@
 package com.android.laundrygo.navigation
 
+import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -33,7 +34,6 @@ object Graph {
 @Composable
 fun AppNavigationGraph() {
     val navController = rememberNavController()
-
     NavHost(
         navController = navController,
         startDestination = Graph.AUTHENTICATION,
@@ -107,11 +107,10 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             )
         }
 
+        // --- Pendaftaran Rute Lainnya ---
         composable(route = Screen.InProcess.route) {
-            // InProcessViewModel butuh ServiceRepository, jadi kita gunakan factory
             val factory = InProcessViewModel.provideFactory(serviceRepository)
             val inProcessViewModel: InProcessViewModel = viewModel(factory = factory)
-
             InProcessScreen(
                 viewModel = inProcessViewModel,
                 onBackClick = { navController.navigateUp() }
@@ -119,7 +118,13 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.Location.route) {
-            LocationScreen(onBack = { navController.navigateUp() })
+            val context = LocalContext.current
+            val factory = LocationViewModelFactory(context)
+            val locationViewModel: LocationViewModel = viewModel(factory = factory)
+            LocationScreen(
+                viewModel = locationViewModel,
+                onBack = { navController.navigateUp() }
+            )
         }
 
         composable(route = Screen.TopUp.route) {
@@ -132,9 +137,8 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.Voucher.route) {
-            // Jika VoucherViewModel butuh repository, buat dengan factory
-            // val factory = VoucherViewModelFactory(repository)
-            val voucherViewModel: VoucherViewModel = viewModel()
+            val factory = VoucherViewModel.provideFactory(authRepository)
+            val voucherViewModel: VoucherViewModel = viewModel(factory = factory)
             VoucherScreen(
                 onBackClick = { navController.navigateUp() },
                 voucherViewModel = voucherViewModel
@@ -142,8 +146,10 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.History.route) {
-            // Jika HistoryViewModel butuh repository, buat dengan factory
-            val historyViewModel: HistoryViewModel = viewModel()
+            // Buat ViewModel dengan factory yang benar
+            val factory = HistoryViewModelFactory(serviceRepository)
+            val historyViewModel: HistoryViewModel = viewModel(factory = factory)
+
             HistoryScreen(
                 viewModel = historyViewModel,
                 onBack = { navController.navigateUp() },
@@ -162,8 +168,8 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.Profile.route) {
-            // PERBAIKAN: Panggil factory tanpa argumen, karena konstruktornya kosong.
-            val factory = ProfileViewModelFactory()
+            // Panggil factory DENGAN argumen authRepository
+            val factory = ProfileViewModelFactory(authRepository)
             val profileViewModel: ProfileViewModel = viewModel(factory = factory)
 
             ProfileScreen(
@@ -197,8 +203,11 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         // 3. Pastikan semua layar yang butuh data menggunakan 'repository' yang sama
         composable(route = Screen.Bag.route) { navBackStackEntry ->
             val cartViewModel = getSharedCartViewModel(navBackStackEntry)
+            // Pembuatan BagViewModel di sini sudah benar
             val bagViewModel: BagViewModel = viewModel(factory = BagViewModel.provideFactory(serviceRepository))
             val context = LocalContext.current
+
+            // Panggilan ini sekarang akan berhasil karena BagScreen siap menerima 'viewModel'
             BagScreen(
                 viewModel = bagViewModel,
                 onBack = { navController.navigateUp() },
@@ -212,10 +221,9 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
         composable(route = Screen.Doll.route) { navBackStackEntry ->
             val cartViewModel = getSharedCartViewModel(navBackStackEntry)
-            val dollViewModel: DollViewModel = viewModel(factory = DollViewModel.provideFactory(serviceRepository))
             val context = LocalContext.current
             DollScreen(
-                viewModel = dollViewModel,
+                viewModel = viewModel(factory = DollViewModel.provideFactory(serviceRepository)),
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
                 onAddClick = { service ->
@@ -227,10 +235,9 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
         composable(route = Screen.ShirtPants.route) { navBackStackEntry ->
             val cartViewModel = getSharedCartViewModel(navBackStackEntry)
-            val shirtPantsViewModel: ShirtPantsViewModel = viewModel(factory = ShirtPantsViewModel.provideFactory(serviceRepository))
             val context = LocalContext.current
             ShirtPantsScreen(
-                viewModel = shirtPantsViewModel,
+                viewModel = viewModel(factory = ShirtPantsViewModel.provideFactory(serviceRepository)),
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
                 onAddClick = { service ->
@@ -242,10 +249,9 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
         composable(route = Screen.Shoes.route) { navBackStackEntry ->
             val cartViewModel = getSharedCartViewModel(navBackStackEntry)
-            val shoesViewModel: ShoesViewModel = viewModel(factory = ShoesViewModel.provideFactory(serviceRepository))
             val context = LocalContext.current
             ShoesScreen(
-                viewModel = shoesViewModel,
+                viewModel = viewModel(factory = ShoesViewModel.provideFactory(serviceRepository)),
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
                 onAddClick = { service ->
@@ -257,10 +263,9 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
         composable(route = Screen.SpecialTreatment.route) { navBackStackEntry ->
             val cartViewModel = getSharedCartViewModel(navBackStackEntry)
-            val specialTreatmentViewModel: SpecialTreatmentViewModel = viewModel(factory = SpecialTreatmentViewModel.provideFactory(serviceRepository))
             val context = LocalContext.current
             SpecialTreatmentScreen(
-                viewModel = specialTreatmentViewModel,
+                viewModel = viewModel(factory = SpecialTreatmentViewModel.provideFactory(serviceRepository)),
                 onBack = { navController.navigateUp() },
                 onCartClick = { navController.navigate(Screen.Cart.route) },
                 onAddClick = { service ->
@@ -329,9 +334,16 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.Profile.route) {
-            val profileViewModel: ProfileViewModel = viewModel(factory = ProfileViewModelFactory())
+            // --- PERBAIKAN DI SINI ---
+            // Berikan 'authRepository' yang sudah kita buat di atas saat memanggil Factory
+            val factory = ProfileViewModelFactory(authRepository)
+
+            val profileViewModel: ProfileViewModel = viewModel(factory = factory)
+
             val isEditMode by profileViewModel.isEditMode.collectAsState()
             BackHandler(enabled = isEditMode) { profileViewModel.onCancelEdit() }
+
+            // Pastikan ProfileScreen Anda sudah diperbaiki untuk menerima viewModel
             ProfileScreen(
                 viewModel = profileViewModel,
                 onNavigateBack = { navController.navigateUp() },

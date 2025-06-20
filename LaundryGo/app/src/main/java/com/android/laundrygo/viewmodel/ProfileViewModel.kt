@@ -3,8 +3,8 @@ package com.android.laundrygo.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.android.laundrygo.model.User
 import com.android.laundrygo.repository.AuthRepository
-import com.android.laundrygo.repository.AuthRepositoryImpl
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 data class ProfileUiState(
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
-    val userId: String = "",
+    val userId: String = "", // Menggunakan uid agar konsisten
     val name: String = "",
     val username: String = "",
     val email: String = "",
@@ -54,18 +54,28 @@ class ProfileViewModel(private val repository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val result = repository.getUserProfile()
-            result.onSuccess { user ->
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        userId = user.userId,
-                        name = user.name,
-                        username = user.username,
-                        email = user.email,
-                        phone = user.phone,
-                        address = user.address
-                    )
+            result.onSuccess { user -> // 'user' di sini bertipe User? (bisa null)
+
+                // --- PERBAIKAN DI SINI: Lakukan null check ---
+                if (user != null) {
+                    // Jika user tidak null, kita aman mengakses semua propertinya
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            userId = user.userId, // Gunakan 'uid' yang konsisten
+                            name = user.name,
+                            username = user.username,
+                            email = user.email,
+                            phone = user.phone,
+                            address = user.address,
+                            errorMessage = null
+                        )
+                    }
+                } else {
+                    // Jika user null, tangani sebagai error
+                    _uiState.update { it.copy(isLoading = false, errorMessage = "Profil pengguna tidak ditemukan.") }
                 }
+
             }.onFailure { exception ->
                 _uiState.update { it.copy(isLoading = false, errorMessage = exception.message) }
             }
@@ -84,59 +94,49 @@ class ProfileViewModel(private val repository: AuthRepository) : ViewModel() {
 
     fun onSaveEdit() {
         viewModelScope.launch {
-            _isEditMode.value = false // Keluar dari mode edit, tampilkan loading di UI utama
+            _isEditMode.value = false
             _uiState.update { it.copy(isLoading = true) }
 
-            // Buat objek User baru dari state editan
-            val updatedUser = com.android.laundrygo.model.User(
-                userId = _editState.value.userId,
+            val updatedUser = User(
+                userId =  _editState.value.userId, // Gunakan 'uid'
                 name = _editState.value.name,
-                username = _editState.value.username, // username tidak bisa diedit, ambil dari state lama
+                username = _editState.value.username,
                 email = _editState.value.email,
                 phone = _editState.value.phone,
                 address = _editState.value.address
             )
 
-            // Panggil repository untuk menyimpan perubahan
             val result = repository.updateUserProfile(updatedUser)
             result.onSuccess {
-                // Jika sukses, update state utama dengan data baru
                 _uiState.value = _editState.value.copy(isLoading = false)
             }.onFailure { exception ->
-                // Jika gagal, tampilkan pesan error
                 _uiState.update { it.copy(isLoading = false, errorMessage = exception.message) }
             }
         }
     }
 
-    // Fungsi untuk mengupdate setiap field di editState
-    fun onNameChange(newName: String) {
-        _editState.update { it.copy(name = newName) }
-    }
-    fun onEmailChange(newEmail: String) {
-        _editState.update { it.copy(email = newEmail) }
-    }
-    fun onPhoneChange(newPhone: String) {
-        _editState.update { it.copy(phone = newPhone) }
-    }
-    fun onAddressChange(newAddress: String) {
-        _editState.update { it.copy(address = newAddress) }
-    }
+    // ... (Fungsi onNameChange, onEmailChange, dll tidak perlu diubah)
+    fun onNameChange(newName: String) { _editState.update { it.copy(name = newName) } }
+    fun onEmailChange(newEmail: String) { _editState.update { it.copy(email = newEmail) } }
+    fun onPhoneChange(newPhone: String) { _editState.update { it.copy(phone = newPhone) } }
+    fun onAddressChange(newAddress: String) { _editState.update { it.copy(address = newAddress) } }
 
     fun logout() {
         viewModelScope.launch {
-            repository.logout() // Panggil fungsi logout di repository
+            repository.logout()
             _eventFlow.emit(ProfileEvent.NavigateToLogin)
         }
     }
 }
 
-// Factory untuk ProfileViewModel
-class ProfileViewModelFactory : ViewModelProvider.Factory {
+// --- PERBAIKAN PADA FACTORY ---
+// Factory sekarang menerima AuthRepository sebagai parameter
+class ProfileViewModelFactory(private val repository: AuthRepository) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ProfileViewModel::class.java)) {
-            return ProfileViewModel(AuthRepositoryImpl()) as T
+            // Gunakan repository yang diberikan dari luar
+            return ProfileViewModel(repository) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
