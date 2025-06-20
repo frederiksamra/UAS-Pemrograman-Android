@@ -11,8 +11,8 @@
 - Saat pertama kali membuka aplikasi, pengguna akan dihadapkan dengan halaman **Login** atau **Register**.
 - Jika sudah memiliki akun, pengguna dapat langsung **Login**.
 - **Akun yang dapat digunakan untuk login:**
-  - **Username**: `user`
-  - **Password**: `password`
+  - **Email**: `aveline@gmail.com`
+  - **Password**: `aveline`
 - Pengguna juga dapat **Login dengan akun Google**.
 - Jika belum memiliki akun dan tidak ingin menggunakan akun Google, pengguna dapat melakukan **registrasi terlebih dahulu**.
 
