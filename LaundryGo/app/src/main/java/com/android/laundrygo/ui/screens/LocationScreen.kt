@@ -75,7 +75,7 @@ fun LocationScreen(
 
                 // Jika lokasi user sudah didapatkan
                 if (permissionGranted && userLocation != null) {
-                    // Gunakan komponen MapView yang sudah kita perbaiki
+                    // Gunakan komponen MapView
                     LaundryMapView(
                         modifier = Modifier.fillMaxSize(),
                         userLocation = userLocation,
@@ -92,7 +92,7 @@ fun LocationScreen(
                 }
             }
 
-            // Detail card, sudah benar
+            // Detail card
             selectedLaundry?.let { laundry ->
                 Card(
                     modifier = Modifier
@@ -122,7 +122,7 @@ fun LocationScreen(
     }
 }
 
-// Composable terpisah untuk MapView agar lebih rapi dan reusable
+// Composable terpisah untuk MapView
 @Composable
 fun LaundryMapView(
     modifier: Modifier = Modifier,
@@ -221,6 +221,5 @@ fun rememberMapViewWithLifecycle(): MapView {
 @Preview(showBackground = true)
 @Composable
 fun LocationScreenPreview() {
-    // Anda mungkin perlu membuat ViewModel palsu untuk preview
-    // LocationScreen()
+
 }
