@@ -24,7 +24,8 @@ import com.android.laundrygo.viewmodel.VoucherViewModel
 @Composable
 fun VoucherScreen(
     onBackClick: () -> Unit,
-    voucherViewModel: VoucherViewModel // Terima ViewModel dari NavGraph
+    onVoucherSelected: (Voucher) -> Unit, // Callback untuk mengirim voucher
+    voucherViewModel: VoucherViewModel
 ) {
     // PERBAIKAN: Gunakan satu UiState object
     val uiState by voucherViewModel.uiState.collectAsState()
@@ -66,12 +67,12 @@ fun VoucherScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(uiState.vouchers, key = { it.documentId }) { voucher ->
+                    items(uiState.vouchers, key = { it.voucherDocumentId }) { voucher ->
                         NewVoucherCard(
                             voucher = voucher,
                             expiry = voucherViewModel.formatDate(voucher.valid_until),
-                            // PERBAIKAN: Panggil fungsi onVoucherUsed
-                            onUseClick = { voucherViewModel.onVoucherUsed(voucher.documentId) }
+                            // Saat tombol diklik, panggil callback untuk mengirim data voucher & kembali
+                            onUseClick = { onVoucherSelected(voucher) }
                         )
                     }
                 }
@@ -149,6 +150,7 @@ fun NewVoucherCard(
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onUseClick,
+                    enabled = !voucher.is_used,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
@@ -156,7 +158,7 @@ fun NewVoucherCard(
                         contentColor = White
                     )
                 ) {
-                    Text(text = "Use", fontWeight = FontWeight.Bold)
+                    Text(text = if (voucher.is_used) "Telah Digunakan" else "Gunakan")
                 }
             }
         }

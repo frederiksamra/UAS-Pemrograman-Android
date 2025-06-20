@@ -7,6 +7,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
@@ -38,13 +40,9 @@ import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.*
 import com.android.laundrygo.viewmodel.DashboardViewModel
 
-// --- PERBAIKAN UTAMA: FUNGSI INTI ---
 @Composable
 fun DashboardScreen(
-    // 1. Terima ViewModel dari luar (NavGraph)
     viewModel: DashboardViewModel,
-
-    // 2. Navigasi tetap sebagai parameter
     onNavigateToServiceType: () -> Unit,
     onNavigateToLocation: () -> Unit,
     onNavigateToCart: () -> Unit,
@@ -54,86 +52,79 @@ fun DashboardScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToInProcess: () -> Unit
 ) {
-    // Ambil semua state dari ViewModel yang sudah diberikan
-    val user by viewModel.user.observeAsState(null)
-    val userName by viewModel.userName.observeAsState("User")
-    val userBalance by viewModel.userBalance.observeAsState("Rp 0")
-    val error by viewModel.error.observeAsState()
-    val vouchers by viewModel.vouchers.observeAsState(emptyList())
+    // Ambil satu UiState object dari ViewModel
+    val uiState by viewModel.uiState.collectAsState()
 
-    // Panggil konten UI dengan state yang sudah didapat
-    DashboardScreenContent(
-        user = user,
-        userName = userName,
-        userBalance = userBalance,
-        error = error,
-        vouchers = vouchers,
-        onTopUpClick = onNavigateToTopUp,
-        onSearchClick = { /* TODO: Implement search */ },
-        onFeatureClick = { featureId ->
-            when (featureId) {
-                "service_type" -> onNavigateToServiceType()
-                "nearest_location" -> onNavigateToLocation()
-                "cart" -> onNavigateToCart()
-                "voucher" -> onNavigateToVoucher()
-                "top_up" -> onNavigateToTopUp()
-                "history" -> onNavigateToHistory()
-                "in_process" -> onNavigateToInProcess() // Tambahkan handler untuk "In Process"
-            }
-        },
-        onClaimVoucherClick = { voucherId -> viewModel.claimVoucher(voucherId) },
-        onNavigateToProfile = onNavigateToProfile
-    )
-}
-
-// Composable ini bersifat 'stateless' dan hanya menampilkan UI
-@Composable
-private fun DashboardScreenContent(
-    user: User?,
-    userName: String,
-    userBalance: String,
-    error: String?,
-    vouchers: List<Voucher>,
-    onTopUpClick: () -> Unit,
-    onSearchClick: () -> Unit,
-    onFeatureClick: (String) -> Unit,
-    onClaimVoucherClick: (String) -> Unit,
-    onNavigateToProfile: () -> Unit
-) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
     ) {
-        HeaderSection(
-            user = user,
-            userName = userName,
-            userBalance = userBalance,
-            onSearchClick = onSearchClick,
-            onTopUpClick = onTopUpClick,
-            onNavigateToProfile = onNavigateToProfile
-        )
-
-        error?.let {
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+        if (uiState.isLoading) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                // verticalScroll REMOVED here as discussed before
             ) {
+                HeaderSection(
+                    user = uiState.user,
+                    userName = uiState.userName,
+                    userBalance = uiState.userBalance,
+                    onSearchClick = { /* TODO: Implement search */ },
+                    onTopUpClick = onNavigateToTopUp,
+                    onNavigateToProfile = onNavigateToProfile
+                )
+
+                uiState.error?.let {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                    ) {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
+                FeaturesSection(onFeatureClick = { featureId ->
+                    when (featureId) {
+                        "service_type" -> onNavigateToServiceType()
+                        "nearest_location" -> onNavigateToLocation()
+                        "cart" -> onNavigateToCart()
+                        "voucher" -> onNavigateToVoucher()
+                        "top_up" -> onNavigateToTopUp()
+                        "history" -> onNavigateToHistory()
+                        "in_process" -> onNavigateToInProcess()
+                    }
+                })
+
+                // "Promo" title now here
                 Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp)
+                    text = "Promo",
+                    style = MaterialTheme.typography.headlineLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+                )
+
+                // Promo Section now only contains the LazyColumn of vouchers
+                PromoSection(
+                    vouchers = uiState.vouchers,
+                    onClaimVoucherClick = { voucherId ->
+                        viewModel.claimVoucher(voucherId)
+                    }
                 )
             }
         }
-
-        FeaturesSection(onFeatureClick = onFeatureClick)
-
-        PromoSection(vouchers = vouchers, onClaimVoucherClick = onClaimVoucherClick)
     }
 }
 
+// --- Semua Composable private di bawah ini tidak perlu diubah, mereka sudah bagus ---
 
 @Composable
 private fun HeaderSection(
@@ -149,7 +140,6 @@ private fun HeaderSection(
             .fillMaxWidth()
             .height(220.dp)
     ) {
-        // Latar belakang biru di bagian atas
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -159,14 +149,11 @@ private fun HeaderSection(
                     shape = RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp)
                 )
         )
-
-        // Konten utama header
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Baris untuk Search Bar dan Foto Profil
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -186,23 +173,16 @@ private fun HeaderSection(
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
-
                 Spacer(modifier = Modifier.width(16.dp))
-
-                // --- PERUBAHAN UTAMA DI SINI ---
-                // Mengganti Icon statis dengan komponen InitialsProfilePicture
                 Box(modifier = Modifier.clickable { onNavigateToProfile() }) {
                     InitialsProfilePicture(
-                        name = user?.name ?: "", // Mengambil nama dari objek User
+                        name = user?.name ?: "",
                         size = 62.dp,
                         textStyle = MaterialTheme.typography.headlineSmall.copy(color = Color.White)
                     )
                 }
             }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // Kartu untuk "Hello, User" dan Saldo
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.medium,
@@ -226,9 +206,8 @@ private fun HeaderSection(
                             modifier = Modifier.size(40.dp)
                         )
                         Spacer(modifier = Modifier.width(10.dp))
-                        // Menampilkan saldo yang sudah diformat dari ViewModel
                         Text(
-                            text = "Rp $userBalance",
+                            text = userBalance, // Menggunakan userBalance yang sudah diformat
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -268,11 +247,10 @@ private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = "Features",
-            style = MaterialTheme.typography.headlineLarge, // DIUBAH
-            color = MaterialTheme.colorScheme.primary, // DIUBAH
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-
         val features = listOf(
             FeatureItem("Service Type", IconType.DrawableResource(R.drawable.service_type), "service_type"),
             FeatureItem("Cart", IconType.DrawableResource(R.drawable.cart), "cart"),
@@ -282,7 +260,6 @@ private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
             FeatureItem("History", IconType.ImageVectorIcon(Icons.Default.History), "history"),
             FeatureItem("Top Up", IconType.ImageVectorIcon(Icons.Default.AccountBalanceWallet), "top_up")
         )
-
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
@@ -334,42 +311,37 @@ private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
     }
 }
 
-
 @Composable
 fun PromoSection(
     vouchers: List<Voucher>,
     onClaimVoucherClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier.padding(16.dp)) {
-        Text(
-            text = "Promo",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight() // You might want to adjust this based on your layout needs
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
         if (vouchers.isEmpty()) {
-            Text(
-                "Tidak ada voucher tersedia saat ini.",
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
+            item {
+                Text(
+                    text = "Tidak ada voucher tersedia saat ini.",
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+            }
         } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                vouchers.forEach { voucher ->
-                    M3VoucherCard(
-                        voucher = voucher,
-                        onUseClick = { onClaimVoucherClick(voucher.documentId) }
-                    )
-                }
+            items(vouchers, key = { it.voucherDocumentId }) { voucher ->
+                M3VoucherCard(
+                    voucher = voucher,
+                    onUseClick = { onClaimVoucherClick(voucher.voucherDocumentId) }
+                )
             }
         }
     }
 }
+
 
 // DESAIN M3 VOUCHER CARD BARU
 @Composable

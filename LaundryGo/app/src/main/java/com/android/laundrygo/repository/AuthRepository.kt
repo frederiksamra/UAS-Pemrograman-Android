@@ -21,6 +21,7 @@ interface AuthRepository {
     suspend fun loginWithGoogle(idToken: String): Result<Unit>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
     suspend fun getUserProfile(): Result<User?> // Diubah agar bisa null jika dokumen tidak ada
+    fun getCurrentUserProfile(): Flow<Result<User?>>
     suspend fun updateUserProfile(user: User): Result<Unit>
     suspend fun performTopUp(amount: Double): Result<Unit>
     fun logout()
@@ -28,11 +29,17 @@ interface AuthRepository {
     // --- FUNGSI BARU UNTUK VOUCHER ---
     fun getMyVouchers(): Flow<Result<List<Voucher>>>
     suspend fun claimVoucher(voucher: Voucher): Result<Unit>
+
+    // Fungsi baru yang menggabungkan semua proses pembayaran
+    suspend fun processPayment(
+        userId: String,
+        transactionId: String,
+        amountToDeduct: Double,
+        voucherToUseId: String? // ID voucher yang digunakan, bisa null
+    ): Result<Unit>
 }
 
-// --- IMPLEMENTASI ---
 class AuthRepositoryImpl : AuthRepository {
-
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
@@ -40,7 +47,6 @@ class AuthRepositoryImpl : AuthRepository {
         return try {
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw IllegalStateException("Firebase user not found.")
-            // PERBAIKAN: Menggunakan .copy(uid = ...) agar cocok dengan model User yang baru
             val finalUserProfile = userProfile.copy(userId = firebaseUser.uid, createdAt = Timestamp.now())
             firestore.collection("users").document(firebaseUser.uid).set(finalUserProfile).await()
             Result.success(Unit)
@@ -108,6 +114,28 @@ class AuthRepositoryImpl : AuthRepository {
         }
     }
 
+    override fun getCurrentUserProfile(): Flow<Result<User?>> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            trySend(Result.success(null))
+            close()
+            return@callbackFlow
+        }
+
+        val listener = firestore.collection("users").document(uid)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error))
+                    return@addSnapshotListener
+                }
+
+                val user = snapshot?.toObject(User::class.java)
+                trySend(Result.success(user))
+            }
+
+        awaitClose { listener.remove() }
+    }
+
     // Edit Profil User
     override suspend fun updateUserProfile(user: User): Result<Unit> {
         return try {
@@ -166,15 +194,68 @@ class AuthRepositoryImpl : AuthRepository {
         return try {
             val userId = auth.currentUser?.uid ?: throw Exception("User tidak login.")
             val userVoucherRef = firestore.collection("users").document(userId)
-                .collection("my_vouchers").document(voucher.documentId)
+                .collection("my_vouchers").document(voucher.voucherDocumentId)
 
             firestore.runTransaction { transaction ->
                 val snapshot = transaction.get(userVoucherRef)
                 if (snapshot.exists()) {
                     throw Exception("Voucher ini sudah pernah Anda klaim.")
                 }
-                // Salin data voucher ke sub-koleksi milik user
-                transaction.set(userVoucherRef, voucher)
+
+                // --- PERBAIKAN EKSPLISIT DI SINI ---
+                // Buat objek data baru tanpa menyertakan 'documentId' dan 'is_active'
+                val claimedVoucherData = mapOf(
+                    "voucher_code" to voucher.voucher_code,
+                    "discount_type" to voucher.discount_type,
+                    "discount_value" to voucher.discount_value,
+                    "valid_from" to voucher.valid_from,
+                    "valid_until" to voucher.valid_until,
+                    "is_used" to false // Status awal saat di-klaim
+                )
+
+                // Simpan data map ini, bukan seluruh objek voucher
+                transaction.set(userVoucherRef, claimedVoucherData)
+
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun processPayment(
+        userId: String,
+        transactionId: String,
+        amountToDeduct: Double,
+        voucherToUseId: String?
+    ): Result<Unit> {
+        return try {
+            val userRef = firestore.collection("users").document(userId)
+            val transactionRef = firestore.collection("transactions").document(transactionId)
+            val voucherRef = voucherToUseId?.let {
+                firestore.collection("users").document(userId).collection("my_vouchers").document(it)
+            }
+
+            firestore.runTransaction { transaction ->
+                // 1. Ambil data saldo user saat ini
+                val userSnapshot = transaction.get(userRef)
+                val currentBalance = userSnapshot.getDouble("balance") ?: 0.0
+
+                if (currentBalance < amountToDeduct) {
+                    throw Exception("Saldo tidak mencukupi.")
+                }
+
+                // 2. Kurangi saldo user
+                val newBalance = currentBalance - amountToDeduct
+                transaction.update(userRef, "balance", newBalance)
+
+                // 3. Update status transaksi menjadi "Lunas"
+                transaction.update(transactionRef, "status", "Lunas")
+
+                // 4. Jika ada voucher yang digunakan, tandai sebagai terpakai
+                voucherRef?.let {
+                    transaction.update(it, "is_used", true)
+                }
             }.await()
             Result.success(Unit)
         } catch (e: Exception) {

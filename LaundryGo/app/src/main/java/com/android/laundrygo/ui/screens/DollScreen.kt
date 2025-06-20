@@ -21,6 +21,7 @@ import com.android.laundrygo.model.LaundryService
 import com.android.laundrygo.repository.ServiceRepositoryImpl
 import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.util.formatRupiah
 import com.android.laundrygo.viewmodel.DollViewModel
 import java.text.NumberFormat
 import java.util.*

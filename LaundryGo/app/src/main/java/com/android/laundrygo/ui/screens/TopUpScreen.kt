@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -28,7 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.android.laundrygo.repository.AuthRepository
 import com.android.laundrygo.repository.AuthRepositoryImpl
+import com.android.laundrygo.ui.theme.DarkBlue
 import com.android.laundrygo.ui.theme.LaundryGoTheme
+import com.android.laundrygo.ui.theme.White
 import com.android.laundrygo.viewmodel.TopUpState
 import com.android.laundrygo.viewmodel.TopUpUiState
 import com.android.laundrygo.viewmodel.TopUpViewModel
@@ -249,11 +252,12 @@ private fun NominalSelection(
             value = customAmount,
             onValueChange = onCustomAmountChanged,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Atau masukkan nominal lain") },
+            label = { Text("Atau masukkan nominal lain", color = DarkBlue) },
             prefix = { Text("Rp ") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             singleLine = true,
-            shape = MaterialTheme.shapes.large
+            shape = MaterialTheme.shapes.large,
+            textStyle = TextStyle(color = DarkBlue) // Try setting the color here
         )
     }
 }
@@ -294,13 +298,12 @@ private fun PaymentMethodSelection(
                         RadioButton(
                             selected = (method == selectedMethod),
                             onClick = null,
-                            colors = RadioButtonDefaults.colors(selectedColor = Color.White)
+                            colors = RadioButtonDefaults.colors(selectedColor = White) // Changed selected radio button color
                         )
                         Text(
                             text = method,
                             style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 16.dp),
-                            color = MaterialTheme.colorScheme.onSurface
+                            modifier = Modifier.padding(start = 16.dp)
                         )
                     }
                     if (index < methods.lastIndex) {
