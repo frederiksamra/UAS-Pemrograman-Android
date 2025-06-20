@@ -248,7 +248,7 @@ fun LoginScreen(
     }
 }
 
-// Fungsi bantuan untuk warna TextField yang tematik
+// Fungsi bantuan untuk warna TextField y
 @Composable
 fun themedTextFieldColors(): TextFieldColors {
     // Warna untuk keadaan tidak fokus, dibuat sedikit transparan agar kontras
