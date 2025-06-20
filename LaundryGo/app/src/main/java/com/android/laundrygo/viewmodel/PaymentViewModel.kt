@@ -1,14 +1,22 @@
 package com.android.laundrygo.viewmodel
 
+import android.util.Log
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.android.laundrygo.model.CartItem
+import com.android.laundrygo.model.Voucher
+import com.android.laundrygo.repository.AuthRepository
 import com.android.laundrygo.repository.ServiceRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -19,27 +27,43 @@ data class PaymentUiState(
     val transactionId: String = "",
     val isLoading: Boolean = true,
     val error: String? = null,
+
+    // Detail Transaksi
     val orderItems: List<CartItem> = emptyList(),
     val customerName: String = "",
     val pickupInfo: String = "",
-    val totalPrice: Double = 0.0,
     val transactionDate: String = "",
+
+    // New property for storing the selected pickup time
+    val selectedPickupTime: Date? = null,
+
+    // Info Saldo & Pembayaran
     val userBalance: Double? = null,
     val availablePaymentMethods: List<String> = listOf("Balance", "E-Wallet", "Bank Transfer"),
     val selectedPaymentMethod: String? = null,
+
+    // Info Voucher & Harga
+    val myAvailableVouchers: List<Voucher> = emptyList(),
+    val appliedVoucher: Voucher? = null,
+    val subtotal: Double = 0.0,
+    val discountAmount: Double = 0.0,
+    val finalAmount: Double = 0.0, // Harga akhir setelah diskon
+
+    // Status Proses
     val paymentStatus: PaymentStatus = PaymentStatus.IDLE,
-    val showInsufficientBalanceDialog: Boolean = false // <-- State baru untuk dialog
+    val showInsufficientBalanceDialog: Boolean = false
 )
 
 enum class PaymentStatus {
     IDLE, LOADING, SUCCESS, ERROR
 }
 
-
 // ----- Class ViewModel -----
 class PaymentViewModel(
-    private val repository: ServiceRepository,
-    private val transactionId: String
+    private val serviceRepository: ServiceRepository,
+    private val authRepository: AuthRepository,
+    private val transactionId: String,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PaymentUiState())
@@ -48,10 +72,39 @@ class PaymentViewModel(
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
     init {
-        loadTransactionDetails()
+        loadInitialData()
+        observeUserProfile() // Start observing the user profile
+        listenForVoucherResult()
     }
 
-    private fun loadTransactionDetails() {
+    private fun observeUserProfile() {
+        viewModelScope.launch {
+            authRepository.getCurrentUserProfile()
+                .onEach { result ->
+                    result.fold(
+                        onSuccess = { user ->
+                            _uiState.update { it.copy(userBalance = user?.balance) }
+                        },
+                        onFailure = { exception ->
+                            Log.e("PaymentViewModel", "Error observing user profile", exception)
+                            _uiState.update { it.copy(error = exception.message) }
+                        }
+                    )
+                }
+                .launchIn(this)
+        }
+    }
+
+    private fun listenForVoucherResult() {
+        savedStateHandle.getLiveData<Voucher>("selected_voucher").observeForever { voucher ->
+            voucher?.let {
+                onVoucherSelected(it)
+                savedStateHandle.remove<Voucher>("selected_voucher")
+            }
+        }
+    }
+
+    private fun loadInitialData() {
         if (transactionId.isEmpty() || userId.isNullOrEmpty()) {
             _uiState.update { it.copy(isLoading = false, error = "ID Transaksi atau User tidak valid.") }
             return
@@ -59,44 +112,57 @@ class PaymentViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
 
-            val transactionResult = repository.getTransactionById(transactionId)
-            repository.getCurrentUserProfile().collect { userResult ->
-                transactionResult.fold(
-                    onSuccess = { transaction ->
-                        userResult.fold(
-                            onSuccess = { user ->
-                                if (transaction != null && user != null) {
-                                    // PERBAIKAN: Hapus logika 'balanceSufficient' dari sini.
-                                    // Kita hanya memuat data dan tidak menonaktifkan tombol apa pun.
-                                    _uiState.update {
-                                        it.copy(
-                                            isLoading = false,
-                                            transactionId = transaction.id,
-                                            orderItems = transaction.items,
-                                            customerName = transaction.customerName,
-                                            pickupInfo = "${transaction.pickupDate} - ${transaction.pickupTime}",
-                                            totalPrice = transaction.totalPrice,
-                                            transactionDate = transaction.createdAt?.let { date ->
-                                                SimpleDateFormat("EEEE, d MMMM yyyy", Locale("id", "ID")).format(date)
-                                            } ?: "Tanggal tidak tersedia",
-                                            userBalance = user.balance,
-                                            error = null
-                                        )
-                                    }
-                                } else {
-                                    _uiState.update { it.copy(isLoading = false, error = "Data transaksi atau user tidak valid.") }
-                                }
-                            },
-                            onFailure = { userError ->
-                                _uiState.update { it.copy(isLoading = false, error = userError.message) }
-                            }
-                        )
-                    },
-                    onFailure = { txError ->
-                        _uiState.update { it.copy(isLoading = false, error = txError.message) }
-                    }
-                )
+            val transactionResult = serviceRepository.getTransactionById(transactionId)
+            // Removed fetching user profile here, it's now observed in observeUserProfile()
+            val myVouchersResult = authRepository.getMyVouchers().first()
+
+            val transaction = transactionResult.getOrNull()
+            val myVouchers = myVouchersResult.getOrNull() ?: emptyList()
+
+            if (transaction != null) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        transactionId = transaction.id,
+                        orderItems = transaction.items,
+                        customerName = transaction.customerName,
+                        pickupInfo = "${transaction.pickupDate} - ${transaction.pickupTime}",
+                        subtotal = transaction.totalPrice,
+                        finalAmount = transaction.totalPrice,
+                        transactionDate = transaction.createdAt?.toFormattedString() ?: "N/A",
+                        myAvailableVouchers = myVouchers.filter { !it.is_used },
+                        error = null
+                    )
+                }
+            } else {
+                _uiState.update { it.copy(isLoading = false, error = "Gagal memuat detail transaksi.") }
             }
+        }
+    }
+
+    fun onPickupTimeSelected(time: Date) {
+        _uiState.update { it.copy(selectedPickupTime = time, pickupInfo = time.toFormattedString()) }
+        Log.d("PaymentViewModel", "Pickup time selected: ${time.toFormattedString()}")
+    }
+
+    fun onVoucherSelected(voucher: Voucher?) {
+        _uiState.update { it.copy(appliedVoucher = voucher) }
+        calculateFinalAmount()
+    }
+
+    private fun calculateFinalAmount() {
+        _uiState.update { state ->
+            val voucher = state.appliedVoucher
+            var discount = 0.0
+            if (voucher != null) {
+                discount = if (voucher.discount_type == "fixed") {
+                    voucher.discount_value.toDouble()
+                } else { // "percent"
+                    state.subtotal * (voucher.discount_value / 100.0)
+                }
+            }
+            val finalAmount = (state.subtotal - discount).coerceAtLeast(0.0)
+            state.copy(discountAmount = discount, finalAmount = finalAmount)
         }
     }
 
@@ -109,7 +175,7 @@ class PaymentViewModel(
     }
 
     fun dismissInsufficientBalanceDialog() {
-        _uiState.update { it.copy(showInsufficientBalanceDialog = false) }
+        _uiState.update { it.copy(showInsufficientBalanceDialog = false, paymentStatus = PaymentStatus.IDLE) }
     }
 
     fun onPayClicked() {
@@ -121,44 +187,27 @@ class PaymentViewModel(
 
         viewModelScope.launch {
             if (selectedMethod == "Balance") {
-                // Proses pembayaran dengan Saldo
-                val paymentResult = repository.processBalancePayment(userId, currentState.totalPrice)
-                paymentResult.fold(
-                    onSuccess = {
-                        // Jika bayar saldo berhasil, update status transaksi jadi "Lunas"
-                        val statusResult = repository.updateTransactionStatus(transactionId, "Lunas")
-                        statusResult.fold(
-                            onSuccess = {
-                                // Jika update status berhasil, bersihkan keranjang
-                                val clearCartResult = repository.clearCart(userId)
-                                if(clearCartResult.isSuccess) {
-                                    _uiState.update { it.copy(paymentStatus = PaymentStatus.SUCCESS) }
-                                } else {
-                                    _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = "Pembayaran berhasil, namun gagal membersihkan keranjang.") }
-                                }
-                            },
-                            onFailure = { exception ->
-                                _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = exception.message) }
-                            }
-                        )
-                    },
-                    onFailure = { exception ->
-                        // Jika errornya karena saldo tidak cukup, tampilkan dialog
-                        if (exception.message?.contains("Saldo tidak mencukupi") == true) {
-                            _uiState.update {
-                                it.copy(
-                                    paymentStatus = PaymentStatus.IDLE,
-                                    showInsufficientBalanceDialog = true
-                                )
-                            }
-                        } else {
-                            // Untuk error lainnya, tampilkan Toast
-                            _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = exception.message) }
-                        }
-                    }
+                val currentBalance = currentState.userBalance ?: 0.0
+                if (currentBalance < currentState.finalAmount) {
+                    _uiState.update { it.copy(paymentStatus = PaymentStatus.IDLE, showInsufficientBalanceDialog = true) }
+                    return@launch
+                }
+
+                val paymentResult = authRepository.processPayment(
+                    userId = userId,
+                    transactionId = transactionId,
+                    amountToDeduct = currentState.finalAmount,
+                    voucherToUseId = currentState.appliedVoucher?.voucherDocumentId
                 )
+
+                if (paymentResult.isSuccess) {
+                    serviceRepository.clearCart(userId)
+                    _uiState.update { it.copy(paymentStatus = PaymentStatus.SUCCESS) }
+                } else {
+                    _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = paymentResult.exceptionOrNull()?.message) }
+                }
+
             } else {
-                // Logika untuk metode pembayaran lain
                 kotlinx.coroutines.delay(1500)
                 _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = "Metode pembayaran '$selectedMethod' belum tersedia.") }
             }
@@ -166,17 +215,25 @@ class PaymentViewModel(
     }
 }
 
-
 // ----- Factory untuk ViewModel -----
+// Tidak ada perubahan di sini, sudah benar
 class PaymentViewModelFactory(
-    private val repository: ServiceRepository,
-    private val transactionId: String
+    private val serviceRepository: ServiceRepository,
+    private val authRepository: AuthRepository,
+    private val transactionId: String,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PaymentViewModel::class.java)) {
-            return PaymentViewModel(repository, transactionId) as T
+            return PaymentViewModel(serviceRepository, authRepository, transactionId, savedStateHandle) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }
+}
+
+// Helper untuk format tanggal
+private fun Date.toFormattedString(): String {
+    val format = SimpleDateFormat("d MMMM 'pukul' HH:mm", Locale("id", "ID"))
+    return format.format(this)
 }
