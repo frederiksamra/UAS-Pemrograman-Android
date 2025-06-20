@@ -1,35 +1,46 @@
 package com.android.laundrygo.repository
 
 import com.android.laundrygo.model.User
+import com.android.laundrygo.model.Voucher // <-- Pastikan import ini ada
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import com.google.firebase.firestore.ktx.toObject
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
+// --- INTERFACE (Kontrak Lengkap) ---
 interface AuthRepository {
     suspend fun registerUser(email: String, password: String, userProfile: User): Result<Unit>
     suspend fun loginUser(email: String, password: String): Result<Unit>
     suspend fun loginWithGoogle(idToken: String): Result<Unit>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
-    suspend fun getUserProfile(): Result<User>
+    suspend fun getUserProfile(): Result<User?> // Diubah agar bisa null jika dokumen tidak ada
     suspend fun updateUserProfile(user: User): Result<Unit>
     suspend fun performTopUp(amount: Double): Result<Unit>
     fun logout()
+
+    // --- FUNGSI BARU UNTUK VOUCHER ---
+    fun getMyVouchers(): Flow<Result<List<Voucher>>>
+    suspend fun claimVoucher(voucher: Voucher): Result<Unit>
 }
 
+// --- IMPLEMENTASI ---
 class AuthRepositoryImpl : AuthRepository {
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 
-    // Daftar user baru -> Disimpan ke database
     override suspend fun registerUser(email: String, password: String, userProfile: User): Result<Unit> {
         return try {
             val authResult = auth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw IllegalStateException("Firebase user not found.")
+            // PERBAIKAN: Menggunakan .copy(uid = ...) agar cocok dengan model User yang baru
             val finalUserProfile = userProfile.copy(userId = firebaseUser.uid, createdAt = Timestamp.now())
             firestore.collection("users").document(firebaseUser.uid).set(finalUserProfile).await()
             Result.success(Unit)
@@ -55,12 +66,12 @@ class AuthRepositoryImpl : AuthRepository {
             val authResult = auth.signInWithCredential(credential).await()
             val firebaseUser = authResult.user ?: throw IllegalStateException("Firebase user not found.")
 
-            // Cek apakah ini pengguna baru (yang login via Google untuk pertama kali)
-            val isNewUser = authResult.additionalUserInfo?.isNewUser ?: false
-            if (isNewUser) {
-                // Jika user baru, buatkan profil dasar untuknya di Firestore
+            val userDocRef = firestore.collection("users").document(firebaseUser.uid)
+
+            // Cek apakah dokumen user sudah ada
+            if (!userDocRef.get().await().exists()) {
                 val newUserProfile = User(
-                    userId = firebaseUser.uid,
+                    userId = firebaseUser.uid, // PERBAIKAN: Gunakan uid
                     name = firebaseUser.displayName ?: "Google User",
                     email = firebaseUser.email ?: "",
                     phone = firebaseUser.phoneNumber ?: "",
@@ -68,7 +79,7 @@ class AuthRepositoryImpl : AuthRepository {
                     username = firebaseUser.displayName?.replace(" ", "")?.lowercase() ?: "googleuser",
                     createdAt = Timestamp.now()
                 )
-                firestore.collection("users").document(firebaseUser.uid).set(newUserProfile).await()
+                userDocRef.set(newUserProfile).await()
             }
             Result.success(Unit)
         } catch (e: Exception) {
@@ -87,13 +98,11 @@ class AuthRepositoryImpl : AuthRepository {
     }
 
     // Mendapatkan profil pengguna
-    override suspend fun getUserProfile(): Result<User> {
+    override suspend fun getUserProfile(): Result<User?> { // Diubah agar bisa null
         return try {
-            val uid = auth.currentUser?.uid ?: throw Exception("User not logged in.")
+            val uid = auth.currentUser?.uid ?: return Result.success(null) // Kembalikan null jika user tidak login
             val document = firestore.collection("users").document(uid).get().await()
-            val user = document.toObject(User::class.java)
-                ?: throw Exception("User data not found in Firestore.")
-            Result.success(user)
+            Result.success(document.toObject<User>()) // Akan null jika dokumen tidak ada
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -133,5 +142,43 @@ class AuthRepositoryImpl : AuthRepository {
     // Buat Logout
     override fun logout() {
         auth.signOut()
+    }
+
+    override fun getMyVouchers(): Flow<Result<List<Voucher>>> = callbackFlow {
+        val userId = auth.currentUser?.uid
+        if (userId.isNullOrEmpty()) {
+            trySend(Result.failure(Exception("User tidak login."))); close(); return@callbackFlow
+        }
+        val listener = firestore.collection("users").document(userId).collection("my_vouchers")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(Result.failure(error)); return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val vouchers = snapshot.toObjects(Voucher::class.java)
+                    trySend(Result.success(vouchers))
+                }
+            }
+        awaitClose { listener.remove() }
+    }
+
+    override suspend fun claimVoucher(voucher: Voucher): Result<Unit> {
+        return try {
+            val userId = auth.currentUser?.uid ?: throw Exception("User tidak login.")
+            val userVoucherRef = firestore.collection("users").document(userId)
+                .collection("my_vouchers").document(voucher.documentId)
+
+            firestore.runTransaction { transaction ->
+                val snapshot = transaction.get(userVoucherRef)
+                if (snapshot.exists()) {
+                    throw Exception("Voucher ini sudah pernah Anda klaim.")
+                }
+                // Salin data voucher ke sub-koleksi milik user
+                transaction.set(userVoucherRef, voucher)
+            }.await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

@@ -11,64 +11,44 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.model.Voucher
-import com.android.laundrygo.ui.theme.BlackText
-import com.android.laundrygo.ui.theme.Cream
-import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.DarkBlueText
+import com.android.laundrygo.ui.theme.*
 import com.android.laundrygo.viewmodel.VoucherViewModel
-import com.android.laundrygo.ui.theme.LaundryGoTheme
-import com.android.laundrygo.ui.theme.LightSteelBlue
-import com.android.laundrygo.ui.theme.RedError
-import com.android.laundrygo.ui.theme.White
-import com.android.laundrygo.ui.theme.lightNavy
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VoucherScreen(
     onBackClick: () -> Unit,
-    voucherViewModel: VoucherViewModel = viewModel()
+    voucherViewModel: VoucherViewModel // Terima ViewModel dari NavGraph
 ) {
-    val vouchers by voucherViewModel.vouchers.collectAsState()
-    val isLoading by voucherViewModel.isLoading.collectAsState()
-    val error by voucherViewModel.error.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(Unit) {
-        voucherViewModel.claimStatus.collect { message ->
-            snackbarHostState.showSnackbar(message)
-        }
-    }
+    // PERBAIKAN: Gunakan satu UiState object
+    val uiState by voucherViewModel.uiState.collectAsState()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("My Voucher", fontWeight = FontWeight.Bold) },
+                title = { Text("Voucher Saya", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Kembali",
-                            tint = DarkBlueText // Menggunakan warna teks utama Anda
+                            tint = DarkBlueText
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = White, // Sesuai permintaan: TopAppBar putih
-                    titleContentColor = DarkBlueText // Sesuai permintaan: Teks biru tua
+                    containerColor = White,
+                    titleContentColor = DarkBlueText
                 )
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = White // Menggunakan warna Cream sebagai background layar
+        containerColor = White
     ) { paddingValues ->
         Box(
             modifier = Modifier
@@ -76,21 +56,22 @@ fun VoucherScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
+            // PERBAIKAN: Gunakan when dengan state dari uiState
             when {
-                isLoading -> CircularProgressIndicator(color = lightNavy)
-                error != null -> Text(text = error!!, color = RedError)
-                vouchers.isEmpty() -> Text("Tidak ada voucher yang tersedia saat ini.", color = DarkBlueText.copy(alpha = 0.7f))
+                uiState.isLoading -> CircularProgressIndicator(color = lightNavy)
+                uiState.error != null -> Text(text = uiState.error!!, color = RedError, textAlign = TextAlign.Center)
+                uiState.vouchers.isEmpty() -> Text("Anda belum memiliki voucher.", color = DarkBlueText.copy(alpha = 0.7f))
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(vouchers, key = { it.documentId }) { voucher ->
-                        // Menggunakan desain kartu yang baru dengan palet warna Anda
+                    items(uiState.vouchers, key = { it.documentId }) { voucher ->
                         NewVoucherCard(
                             voucher = voucher,
                             expiry = voucherViewModel.formatDate(voucher.valid_until),
-                            onUseClick = { voucherViewModel.claimVoucher(voucher.documentId) }
+                            // PERBAIKAN: Panggil fungsi onVoucherUsed
+                            onUseClick = { voucherViewModel.onVoucherUsed(voucher.documentId) }
                         )
                     }
                 }
@@ -98,7 +79,6 @@ fun VoucherScreen(
         }
     }
 }
-
 
 // --- DESAIN KARTU VOUCHER BARU DENGAN PALET ANDA ---
 @Composable
