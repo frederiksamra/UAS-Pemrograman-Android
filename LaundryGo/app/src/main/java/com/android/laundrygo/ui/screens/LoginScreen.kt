@@ -31,6 +31,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.R
+import com.android.laundrygo.ui.theme.Cream
+import com.android.laundrygo.ui.theme.DarkBlue
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.LoginEvent
 import com.android.laundrygo.viewmodel.LoginViewModel
@@ -143,7 +145,7 @@ fun LoginScreen(
                     if (uiState.errorMessage != null) {
                         Text(
                             text = uiState.errorMessage!!,
-                            color = MaterialTheme.colorScheme.error,
+                            color = Cream,
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -274,10 +276,12 @@ fun themedTextFieldColors(): TextFieldColors {
         unfocusedTrailingIconColor = unfocusedColor,
 
         // Warna saat ada error
-        errorCursorColor = MaterialTheme.colorScheme.error,
-        errorIndicatorColor = MaterialTheme.colorScheme.error,
-        errorLabelColor = MaterialTheme.colorScheme.error,
-        errorLeadingIconColor = MaterialTheme.colorScheme.error
+        errorCursorColor = Cream,
+        errorIndicatorColor = Cream,
+        errorLabelColor = Cream,
+        errorLeadingIconColor = DarkBlue,
+        errorTextColor = MaterialTheme.colorScheme.primary,
+        errorTrailingIconColor = DarkBlue
     )
 }
 

@@ -255,9 +255,11 @@ fun TransactionScreen(
                         showModeToggle = false,
                         colors = DatePickerDefaults.colors(
                             containerColor = DarkBlue,
-                            headlineContentColor = Cream,
+                            titleContentColor = Cream,
+                            headlineContentColor = Cream, // For "<", ">", and Month (Let's keep this)
+                            navigationContentColor = Cream, // Try this for Month and Year
                             weekdayContentColor = Cream.copy(alpha = 0.8f),
-                            subheadContentColor = Cream,
+                            yearContentColor = Cream,
                             selectedDayContainerColor = lightNavy,
                             selectedDayContentColor = Cream,
                             todayDateBorderColor = lightNavy,
@@ -284,7 +286,7 @@ fun TransactionScreen(
                             enabled = datePickerState.selectedDateMillis != null,
                             colors = ButtonDefaults.buttonColors(containerColor = lightNavy)
                         ) {
-                            Text("Pilih", color = Cream, fontWeight = FontWeight.Bold)
+                            Text("Pilih", color = Cream, fontWeight = FontWeight.Bold) // This is already Cream
                         }
                     }
                 }
@@ -300,7 +302,7 @@ private fun formatDate(millis: Long?): String {
 }
 //
 //@Preview(showBackground = true)
-//@Composable
+//@Compoosable
 //private fun TransactionScreenPreview() {
 //    // 1. Buat Repository Palsu khusus untuk kebutuhan preview ini
 //    class FakeTransactionRepository : ServiceRepository {

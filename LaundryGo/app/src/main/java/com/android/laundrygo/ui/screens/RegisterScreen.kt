@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.RegisterEvent
 import com.android.laundrygo.viewmodel.RegisterUserEvent
@@ -98,7 +99,7 @@ fun RegisterScreen(
                     if (uiState.errorMessage != null) {
                         Text(
                             text = uiState.errorMessage!!,
-                            color = MaterialTheme.colorScheme.error,
+                            color = Cream,
                             style = MaterialTheme.typography.bodyMedium,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(bottom = 8.dp)
