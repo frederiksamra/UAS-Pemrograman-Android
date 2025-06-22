@@ -13,17 +13,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.android.laundrygo.model.Transaction
+import com.android.laundrygo.ui.theme.DarkBlue
+import com.android.laundrygo.viewmodel.HistoryDetailState
 import com.android.laundrygo.viewmodel.HistoryDetailViewModel
+import com.android.laundrygo.viewmodel.HistoryDetailViewModelFactory
 import com.android.laundrygo.viewmodel.ProductDetail
 import androidx.compose.ui.text.style.TextAlign
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryDetailScreen(
-    viewModel: HistoryDetailViewModel = viewModel(),
     orderId: String,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    viewModel: HistoryDetailViewModel = viewModel(factory = HistoryDetailViewModelFactory(orderId = orderId))
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -32,9 +38,9 @@ fun HistoryDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = state.orderId,
+                        text = "Detail Transaksi",
                         fontSize = 20.sp,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 },
                 navigationIcon = {
@@ -42,51 +48,62 @@ fun HistoryDetailScreen(
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Back",
-                            tint = Color.White
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF26326A)
+                    containerColor = Color.Transparent
                 )
             )
-        }
+        },
+        containerColor = Color.White
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
                 .padding(16.dp)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally // Add this line
         ) {
-            // Order Info
-            DetailCard(
-                "No. Order" to state.orderId,
-                "Name" to state.name,
-                "Phone Number" to state.phone,
-                "Total payment" to state.totalPayment,
-                "Payment method" to state.paymentMethod,
-                "Payment status" to state.paymentStatus,
-                "Address" to state.address
-            )
+            if (state.isLoading) {
+                CircularProgressIndicator() // Remove the align modifier here
+            } else if (state.error != null) {
+                Text(
+                    text = "Error: ${state.error}",
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(16.dp)
+                )
+            } else {
+                // Order Info
+                DetailCard(
+                    "No. Order" to state.transaction?.id.orEmpty(),
+                    "Name" to state.transaction?.customerName.orEmpty(),
+                    "Phone Number" to state.transaction?.customerPhone.orEmpty(),
+                    "Total payment" to state.totalPaymentFormatted,
+                    "Payment method" to state.transaction?.paymentMethod.orEmpty(),
+                    "Payment status" to state.transaction?.status.orEmpty(),
+                    "Address" to state.transaction?.customerAddress.orEmpty()
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Product List
-            SectionTitle("Product Details")
-            ProductHeaderRow()
-            state.productList.forEach {
-                ProductRow(it)
+                // Product List
+                SectionTitle("Product Details")
+                ProductHeaderRow()
+                state.transaction?.items?.forEach {
+                    ProductRow(ProductDetail(it.name, it.price.toString(), it.quantity.toString(), (it.price * it.quantity).toString()))
+                } ?: Text("No items in this transaction")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Payment Summary
+                SectionTitle("Payment Summary")
+                SummaryRow("Subtotal :", state.subtotalFormatted)
+                SummaryRow("Discount :", state.discountFormatted)
+                SummaryRow("Total :", state.finalAmountFormatted)
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Payment Summary
-            SectionTitle("Payment Summary")
-            SummaryRow("Subtotal :", state.subtotal)
-            SummaryRow("Discount :", state.discount)
-            SummaryRow("Voucher :", state.voucher)
-            SummaryRow("Total :", state.total)
         }
     }
 }

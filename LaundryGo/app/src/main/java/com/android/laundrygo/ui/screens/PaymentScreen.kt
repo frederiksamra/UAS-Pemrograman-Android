@@ -1,4 +1,4 @@
-package com.android.laundrygo.ui.screens.payment
+package com.android.laundrygo.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
@@ -22,28 +22,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.android.laundrygo.model.CartItem
-import com.android.laundrygo.model.LaundryService
-import com.android.laundrygo.model.Transaction
-import com.android.laundrygo.model.User
 import com.android.laundrygo.model.Voucher
-import com.android.laundrygo.repository.AuthRepository
-import com.android.laundrygo.repository.ServiceRepository
 import com.android.laundrygo.ui.theme.Cream
 import com.android.laundrygo.ui.theme.DarkBlue
-import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.PaymentStatus
 import com.android.laundrygo.viewmodel.PaymentUiState
 import com.android.laundrygo.viewmodel.PaymentViewModel
-import com.android.laundrygo.viewmodel.PaymentViewModelFactory
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOf
 import java.text.NumberFormat
 import java.util.*
 
@@ -426,49 +413,3 @@ private fun formatRupiah(amount: Double, withPrefix: Boolean = true): String {
     format.maximumFractionDigits = 0
     return format.format(amount)
 }
-
-// --- PERBAIKAN UTAMA DI PREVIEW ---
-//@Preview(showBackground = true, name = "Default State")
-//@Composable
-//fun PaymentScreenPreview() {
-//    // 1. Buat FakeRepository yang mengembalikan data Transaksi
-//    class FakePaymentRepository : ServiceRepository {
-//        override suspend fun getTransactionById(transactionId: String): Result<Transaction?> {
-//            val dummyItems = listOf(
-//                CartItem("1", "Deep Cleaning Shoes", "...", 25000.0, 2),
-//                CartItem("2", "Special Long Dress", "...", 35000.0, 1)
-//            )
-//            val dummyTransaction = Transaction(
-//                id = transactionId,
-//                customerName = "John Doe",
-//                pickupDate = "Jumat, 20 Juni 2025",
-//                pickupTime = "10:00",
-//                items = dummyItems,
-//                totalPrice = 85000.0,
-//                createdAt = Date()
-//            )
-//            return Result.success(dummyTransaction)
-//        }
-//        // Implementasi fungsi lain (bisa kosong)
-//        override suspend fun getServices(category: String): Result<List<LaundryService>> = Result.success(emptyList())
-//        override fun getCartItems(userId: String): Flow<Result<List<CartItem>>> = flowOf(Result.success(emptyList()))
-//        override fun addItemToCart(userId: String, service: LaundryService): Flow<Result<Unit>> = flowOf(Result.success(Unit))
-//        override fun removeItemFromCart(userId: String, itemId: String): Flow<Result<Unit>> = flowOf(Result.success(Unit))
-//        override fun updateItemQuantity(userId: String, itemId: String, change: Int): Flow<Result<Unit>> = flowOf(Result.success(Unit))
-//        override suspend fun createTransaction(transaction: Transaction): Result<String> = Result.success("tx-123")
-//        override suspend fun clearCart(userId: String): Result<Unit> = Result.success(Unit)
-//    }
-//
-//    // 2. Buat ViewModel dengan Factory dan FakeRepository
-//    val factory = PaymentViewModelFactory(FakePaymentRepository(), "tx-preview-123")
-//    val previewViewModel: PaymentViewModel = viewModel(factory = factory)
-//
-//    // 3. Gunakan di Composable
-//    LaundryGoTheme {
-//        PaymentScreen(
-//            onBackClicked = { },
-//            onPaymentSuccess = { },
-//            paymentViewModel = previewViewModel
-//        )
-//    }
-//}

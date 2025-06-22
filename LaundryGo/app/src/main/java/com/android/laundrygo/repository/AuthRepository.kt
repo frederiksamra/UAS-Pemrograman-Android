@@ -1,24 +1,28 @@
 package com.android.laundrygo.repository
 
 import com.android.laundrygo.model.User
-import com.android.laundrygo.model.Voucher // <-- Pastikan import ini ada
+import com.android.laundrygo.model.Voucher
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.QuerySnapshot
 import com.google.firebase.firestore.SetOptions
 import com.google.firebase.firestore.ktx.toObject
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 
 // --- INTERFACE (Kontrak Lengkap) ---
 interface AuthRepository {
     suspend fun registerUser(email: String, password: String, userProfile: User): Result<Unit>
-    suspend fun loginUser(email: String, password: String): Result<Unit>
-    suspend fun loginWithGoogle(idToken: String): Result<Unit>
+    suspend fun loginUser(email: String, password: String): Result<FirebaseUser>
+    suspend fun loginWithGoogle(idToken: String): Result<FirebaseUser>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
     suspend fun getUserProfile(): Result<User?> // Diubah agar bisa null jika dokumen tidak ada
     fun getCurrentUserProfile(): Flow<Result<User?>>
@@ -37,11 +41,15 @@ interface AuthRepository {
         amountToDeduct: Double,
         voucherToUseId: String? // ID voucher yang digunakan, bisa null
     ): Result<Unit>
+
+    fun getUserDocument(userId: String): Flow<Result<DocumentSnapshot>>
+    fun getUserByUsername(username: String): Flow<Result<QuerySnapshot>> // Tambahkan ini
 }
 
 class AuthRepositoryImpl : AuthRepository {
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val TAG = "AuthRepositoryImpl"
 
     override suspend fun registerUser(email: String, password: String, userProfile: User): Result<Unit> {
         return try {
@@ -55,18 +63,17 @@ class AuthRepositoryImpl : AuthRepository {
         }
     }
 
-    // Login dengan Email & Password
-    override suspend fun loginUser(email: String, password: String): Result<Unit> {
+    override suspend fun loginUser(email: String, password: String): Result<FirebaseUser> {
         return try {
-            auth.signInWithEmailAndPassword(email, password).await()
-            Result.success(Unit)
+            val authResult = auth.signInWithEmailAndPassword(email, password).await()
+            Result.success(authResult.user!!)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
 
     // Login dengan Google
-    override suspend fun loginWithGoogle(idToken: String): Result<Unit> {
+    override suspend fun loginWithGoogle(idToken: String): Result<FirebaseUser> {
         return try {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             val authResult = auth.signInWithCredential(credential).await()
@@ -87,7 +94,7 @@ class AuthRepositoryImpl : AuthRepository {
                 )
                 userDocRef.set(newUserProfile).await()
             }
-            Result.success(Unit)
+            Result.success(firebaseUser)
         } catch (e: Exception) {
             Result.failure(e)
         }
@@ -260,6 +267,27 @@ class AuthRepositoryImpl : AuthRepository {
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override fun getUserDocument(userId: String): Flow<Result<DocumentSnapshot>> = flow {
+        try {
+            val snapshot = firestore.collection("users").document(userId).get().await()
+            emit(Result.success(snapshot))
+        } catch (e: Exception) {
+            emit(Result.failure(e))
+        }
+    }
+
+    override fun getUserByUsername(username: String): Flow<Result<QuerySnapshot>> = flow {
+        try {
+            val querySnapshot = firestore.collection("users")
+                .whereEqualTo("username", username)
+                .get()
+                .await()
+            emit(Result.success(querySnapshot))
+        } catch (e: Exception) {
+            emit(Result.failure(e))
         }
     }
 }

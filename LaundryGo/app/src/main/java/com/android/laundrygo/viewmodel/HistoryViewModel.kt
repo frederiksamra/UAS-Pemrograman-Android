@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 // 1. Definisikan UiState untuk menampung semua state layar History
 data class HistoryUiState(
@@ -21,15 +22,11 @@ data class HistoryUiState(
 
 // 2. ViewModel sekarang bergantung pada ServiceRepository
 class HistoryViewModel(private val repository: ServiceRepository) : ViewModel() {
-
     private val _uiState = MutableStateFlow(HistoryUiState())
     val uiState = _uiState.asStateFlow()
-
     private val userId = FirebaseAuth.getInstance().currentUser?.uid
 
-    init {
-        loadUserHistory()
-    }
+    init { loadUserHistory() }
 
     private fun loadUserHistory() {
         if (userId.isNullOrEmpty()) {
@@ -53,9 +50,21 @@ class HistoryViewModel(private val repository: ServiceRepository) : ViewModel() 
             }
             .launchIn(viewModelScope)
     }
+    fun deleteTransaction(transactionId: String) {
+        viewModelScope.launch {
+            repository.deleteTransaction(transactionId) // Call repository function
+                .onSuccess {
+                    // Optionally reload the history after deletion
+                    loadUserHistory()
+                }
+                .onFailure { exception ->
+                    // Handle error, maybe update UI state
+                    _uiState.update { it.copy(error = "Gagal menghapus riwayat: ${exception.message}") }
+                }
+        }
+    }
 }
 
-// 4. Buat Factory untuk menyediakan dependensi ServiceRepository
 class HistoryViewModelFactory(private val repository: ServiceRepository) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
