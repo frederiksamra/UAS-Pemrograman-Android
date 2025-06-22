@@ -47,7 +47,12 @@ fun BagScreen(
                         Icon(Icons.Default.ShoppingCart, contentDescription = "Keranjang")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         },
         containerColor = Color.White
@@ -78,7 +83,6 @@ fun BagScreen(
                     ) {
                         itemsIndexed(uiState.services) { index, service ->
                             val cardColor = if (index % 2 == 0) DarkBlue else Cream
-                            // PERBAIKAN: Panggil BagServiceCard yang sudah kita buat di bawah
                             BagServiceCard(
                                 service = service,
                                 containerColor = cardColor,
@@ -92,9 +96,8 @@ fun BagScreen(
     }
 }
 
-// --- KOMPONEN KARTU KHUSUS UNTUK HALAMAN INI ---
 @Composable
-private fun BagServiceCard( // <-- Fungsi baru yang kita buat dengan menyalin DollServiceCard
+private fun BagServiceCard(
     service: LaundryService,
     containerColor: Color,
     onAddClick: () -> Unit
@@ -103,8 +106,6 @@ private fun BagServiceCard( // <-- Fungsi baru yang kita buat dengan menyalin Do
     val titleColor = if (isCreamCard) DarkBlue else Color.White
     val descriptionColor = if (isCreamCard) DarkBlue.copy(alpha = 0.8f) else Color.White.copy(alpha = 0.8f)
     val priceColor = if (isCreamCard) DarkBlue else Color.White
-
-    // Memanggil fungsi utilitas yang sudah kita buat sebelumnya
     val formattedPrice = formatRupiah(service.price)
 
     Card(

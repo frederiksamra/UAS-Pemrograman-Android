@@ -46,6 +46,7 @@ import com.google.android.gms.common.api.ApiException
 fun LoginScreen(
     onBackClicked: () -> Unit,
     onLoginSuccess: () -> Unit,
+    onNavigateToAdminDashboard: () -> Unit, // Add this callback for admin navigation
     viewModel: LoginViewModel = viewModel(factory = LoginViewModelFactory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -82,6 +83,10 @@ fun LoginScreen(
                 is LoginEvent.NavigateToDashboard -> {
                     Toast.makeText(context, "Login Berhasil!", Toast.LENGTH_SHORT).show()
                     onLoginSuccess()
+                }
+                is LoginEvent.NavigateToAdminDashboard -> { // Add this branch
+                    Toast.makeText(context, "Login Admin Berhasil!", Toast.LENGTH_SHORT).show()
+                    onNavigateToAdminDashboard() // Call the new callback
                 }
                 is LoginEvent.ShowMessage -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_LONG).show()
@@ -156,9 +161,9 @@ fun LoginScreen(
                         value = uiState.email,
                         onValueChange = viewModel::onEmailChange,
                         modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        label = { Text("Email") }, // Label diubah
-                        leadingIcon = { Icon(Icons.Default.Person, "Email Icon") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                        label = { Text("Email or Username") }, // Updated label
+                        leadingIcon = { Icon(Icons.Default.Person, "Email or Username Icon") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text), // Updated keyboard type
                         singleLine = true,
                         readOnly = uiState.isLoading,
                         isError = uiState.errorMessage != null,
@@ -291,7 +296,8 @@ fun LoginScreenPreview() {
     LaundryGoTheme {
         LoginScreen(
             onBackClicked = {},
-            onLoginSuccess = {}
+            onLoginSuccess = {},
+            onNavigateToAdminDashboard = {} // Provide a dummy lambda for preview
         )
     }
 }

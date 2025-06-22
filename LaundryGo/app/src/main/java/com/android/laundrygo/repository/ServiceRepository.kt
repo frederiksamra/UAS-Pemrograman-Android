@@ -1,5 +1,3 @@
-
-
 package com.android.laundrygo.repository
 
 import android.util.Log
@@ -7,6 +5,8 @@ import com.android.laundrygo.model.CartItem
 import com.android.laundrygo.model.LaundryService
 import com.android.laundrygo.model.Transaction
 import com.android.laundrygo.model.User
+import com.android.laundrygo.model.Voucher
+import com.android.laundrygo.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -30,13 +30,17 @@ interface ServiceRepository {
     suspend fun clearCart(userId: String): Result<Unit>
     // Transaksi
     suspend fun createTransaction(transaction: Transaction): Result<String>
-    suspend fun getTransactionById(transactionId: String): Result<Transaction?>
+    suspend fun getTransactionById(transactionId: String): Flow<Result<Transaction?>>
     suspend fun updateTransactionStatus(transactionId: String, newStatus: String): Result<Unit>
+    suspend fun updateTransactionPaymentMethod(transactionId: String, paymentMethod: String): Result<Unit>
+    suspend fun updateTransactionVoucherId(transactionId: String, voucherId: String): Result<Unit>
+    suspend fun getVoucherById(voucherId: String): Flow<Result<Voucher?>> // Add this line
     // User & Pembayaran
     fun getCurrentUserProfile(): Flow<Result<User?>>
     suspend fun processBalancePayment(userId: String, amountToDeduct: Double): Result<Unit>
     // --- FUNGSI BARU YANG DIBUTUHKAN ---
     fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>>
+    suspend fun deleteTransaction(transactionId: String): Result<Unit>
 }
 
 // --- IMPLEMENTASI ---
@@ -165,14 +169,23 @@ class ServiceRepositoryImpl : ServiceRepository {
         }
     }
 
-    override suspend fun getTransactionById(transactionId: String): Result<Transaction?> {
-        return try {
+    override suspend fun getTransactionById(transactionId: String): Flow<Result<Transaction?>> = flow { // Return a Flow
+        try {
             val snapshot = firestore.collection("transactions").document(transactionId).get().await()
             val transaction = snapshot.toObject(Transaction::class.java)
-            Result.success(transaction)
+            emit(Result.success(transaction))
         } catch (e: Exception) {
-            Log.e(TAG, "Error getting transaction by ID", e)
-            Result.failure(e)
+            emit(Result.failure(e))
+        }
+    }
+
+    override suspend fun getVoucherById(voucherId: String): Flow<Result<Voucher?>> = flow { // Implement this function
+        try {
+            val snapshot = firestore.collection("vouchers").document(voucherId).get().await()
+            val voucher = snapshot.toObject(Voucher::class.java)
+            emit(Result.success(voucher))
+        } catch (e: Exception) {
+            emit(Result.failure(e))
         }
     }
 
@@ -180,6 +193,26 @@ class ServiceRepositoryImpl : ServiceRepository {
         return try {
             firestore.collection("transactions").document(transactionId)
                 .update("status", newStatus).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateTransactionPaymentMethod(transactionId: String, paymentMethod: String): Result<Unit> {
+        return try {
+            firestore.collection("transactions").document(transactionId)
+                .update("paymentMethod", paymentMethod).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateTransactionVoucherId(transactionId: String, voucherId: String): Result<Unit> {
+        return try {
+            firestore.collection("transactions").document(transactionId)
+                .update("voucherId", voucherId).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -226,6 +259,15 @@ class ServiceRepositoryImpl : ServiceRepository {
         }
     }
 
+    override suspend fun deleteTransaction(transactionId: String): Result<Unit> {
+        return try {
+            firestore.collection("transactions").document(transactionId).delete().await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     override fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>> = callbackFlow {
         val listener = firestore.collection("transactions")
             .whereEqualTo("userId", userId) // Filter berdasarkan ID pengguna
@@ -244,6 +286,7 @@ class ServiceRepositoryImpl : ServiceRepository {
                     trySend(Result.success(emptyList()))
                 }
             }
+
         // Hapus listener saat tidak digunakan lagi
         awaitClose { listener.remove() }
     }

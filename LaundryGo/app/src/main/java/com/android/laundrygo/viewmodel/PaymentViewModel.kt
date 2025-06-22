@@ -106,7 +106,12 @@ class PaymentViewModel(
 
     private fun loadInitialData() {
         if (transactionId.isEmpty() || userId.isNullOrEmpty()) {
-            _uiState.update { it.copy(isLoading = false, error = "ID Transaksi atau User tidak valid.") }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    error = "ID Transaksi atau User tidak valid."
+                )
+            }
             return
         }
         viewModelScope.launch {
@@ -116,32 +121,45 @@ class PaymentViewModel(
             // Removed fetching user profile here, it's now observed in observeUserProfile()
             val myVouchersResult = authRepository.getMyVouchers().first()
 
-            val transaction = transactionResult.getOrNull()
             val myVouchers = myVouchersResult.getOrNull() ?: emptyList()
 
-            if (transaction != null) {
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        transactionId = transaction.id,
-                        orderItems = transaction.items,
-                        customerName = transaction.customerName,
-                        pickupInfo = "${transaction.pickupDate} - ${transaction.pickupTime}",
-                        subtotal = transaction.totalPrice,
-                        finalAmount = transaction.totalPrice,
-                        transactionDate = transaction.createdAt?.toFormattedString() ?: "N/A",
-                        myAvailableVouchers = myVouchers.filter { !it.is_used },
-                        error = null
-                    )
+            transactionResult.collect { result -> // Collect the Flow<Result<Transaction?>>
+                val transaction = result.getOrNull() // Get the Transaction from the Result
+
+                if (transaction != null) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            transactionId = transaction.id,
+                            orderItems = transaction.items,
+                            customerName = transaction.customerName,
+                            pickupInfo = "${transaction.pickupDate} - ${transaction.pickupTime}",
+                            subtotal = transaction.totalPrice,
+                            finalAmount = transaction.totalPrice,
+                            transactionDate = transaction.createdAt?.toFormattedString() ?: "N/A",
+                            myAvailableVouchers = myVouchers.filter { !it.is_used },
+                            error = null
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            error = "Gagal memuat detail transaksi."
+                        )
+                    }
                 }
-            } else {
-                _uiState.update { it.copy(isLoading = false, error = "Gagal memuat detail transaksi.") }
             }
         }
     }
 
     fun onPickupTimeSelected(time: Date) {
-        _uiState.update { it.copy(selectedPickupTime = time, pickupInfo = time.toFormattedString()) }
+        _uiState.update {
+            it.copy(
+                selectedPickupTime = time,
+                pickupInfo = time.toFormattedString()
+            )
+        }
         Log.d("PaymentViewModel", "Pickup time selected: ${time.toFormattedString()}")
     }
 
@@ -175,7 +193,12 @@ class PaymentViewModel(
     }
 
     fun dismissInsufficientBalanceDialog() {
-        _uiState.update { it.copy(showInsufficientBalanceDialog = false, paymentStatus = PaymentStatus.IDLE) }
+        _uiState.update {
+            it.copy(
+                showInsufficientBalanceDialog = false,
+                paymentStatus = PaymentStatus.IDLE
+            )
+        }
     }
 
     fun onPayClicked() {
@@ -189,19 +212,31 @@ class PaymentViewModel(
             if (selectedMethod == "Balance") {
                 val currentBalance = currentState.userBalance ?: 0.0
                 if (currentBalance < currentState.finalAmount) {
-                    _uiState.update { it.copy(paymentStatus = PaymentStatus.IDLE, showInsufficientBalanceDialog = true) }
+                    _uiState.update {
+                        it.copy(
+                            paymentStatus = PaymentStatus.IDLE,
+                            showInsufficientBalanceDialog = true
+                        )
+                    }
                     return@launch
                 }
+
+                val voucherIdToUse = currentState.appliedVoucher?.voucherDocumentId
 
                 val paymentResult = authRepository.processPayment(
                     userId = userId,
                     transactionId = transactionId,
                     amountToDeduct = currentState.finalAmount,
-                    voucherToUseId = currentState.appliedVoucher?.voucherDocumentId
+                    voucherToUseId = voucherIdToUse // Use the voucher ID
                 )
 
                 if (paymentResult.isSuccess) {
                     serviceRepository.clearCart(userId)
+                    serviceRepository.updateTransactionPaymentMethod(transactionId, selectedMethod)
+                    // Update transaction with voucher ID
+                    if (voucherIdToUse != null) {
+                        serviceRepository.updateTransactionVoucherId(transactionId, voucherIdToUse)
+                    }
                     _uiState.update { it.copy(paymentStatus = PaymentStatus.SUCCESS) }
                 } else {
                     _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = paymentResult.exceptionOrNull()?.message) }
@@ -209,31 +244,40 @@ class PaymentViewModel(
 
             } else {
                 kotlinx.coroutines.delay(1500)
-                _uiState.update { it.copy(paymentStatus = PaymentStatus.ERROR, error = "Metode pembayaran '$selectedMethod' belum tersedia.") }
+                _uiState.update {
+                    it.copy(
+                        paymentStatus = PaymentStatus.ERROR,
+                        error = "Metode pembayaran '$selectedMethod' belum tersedia."
+                    )
+                }
             }
         }
     }
-}
 
-// ----- Factory untuk ViewModel -----
-// Tidak ada perubahan di sini, sudah benar
-class PaymentViewModelFactory(
-    private val serviceRepository: ServiceRepository,
-    private val authRepository: AuthRepository,
-    private val transactionId: String,
-    private val savedStateHandle: SavedStateHandle
-) : ViewModelProvider.Factory {
-    @Suppress("UNCHECKED_CAST")
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(PaymentViewModel::class.java)) {
-            return PaymentViewModel(serviceRepository, authRepository, transactionId, savedStateHandle) as T
+    // ----- Factory untuk ViewModel -----
+    class PaymentViewModelFactory(
+        private val serviceRepository: ServiceRepository,
+        private val authRepository: AuthRepository,
+        private val transactionId: String,
+        private val savedStateHandle: SavedStateHandle
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(PaymentViewModel::class.java)) {
+                return PaymentViewModel(
+                    serviceRepository,
+                    authRepository,
+                    transactionId,
+                    savedStateHandle
+                ) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class")
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
-}
 
-// Helper untuk format tanggal
-private fun Date.toFormattedString(): String {
-    val format = SimpleDateFormat("d MMMM 'pukul' HH:mm", Locale("id", "ID"))
-    return format.format(this)
+    // Helper untuk format tanggal
+    private fun Date.toFormattedString(): String {
+        val format = SimpleDateFormat("d MMMM 'pukul' HH:mm", Locale("id", "ID"))
+        return format.format(this)
+    }
 }

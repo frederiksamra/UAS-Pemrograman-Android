@@ -18,9 +18,9 @@ data class Transaction(
 
     val items: List<CartItem> = emptyList(),
     val totalPrice: Double = 0.0,
-
     var status: String = "Menunggu Pembayaran",
-
+    val paymentMethod: String = "",
+    val voucherId: String? = null,
     @ServerTimestamp
     val createdAt: Date? = null
 )

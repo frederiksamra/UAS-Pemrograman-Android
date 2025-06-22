@@ -1,5 +1,3 @@
-
-
 package com.android.laundrygo.ui.screens
 
 import androidx.compose.foundation.Canvas
@@ -20,10 +18,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -38,6 +40,7 @@ import com.android.laundrygo.model.User
 import com.android.laundrygo.model.Voucher
 import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.*
+import com.android.laundrygo.util.formatRupiah
 import com.android.laundrygo.viewmodel.DashboardViewModel
 
 @Composable
@@ -54,6 +57,7 @@ fun DashboardScreen(
 ) {
     // Ambil satu UiState object dari ViewModel
     val uiState by viewModel.uiState.collectAsState()
+    var searchQuery by remember { mutableStateOf("") }
 
     Box(
         modifier = Modifier
@@ -66,13 +70,13 @@ fun DashboardScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                // verticalScroll REMOVED here as discussed before
             ) {
                 HeaderSection(
                     user = uiState.user,
                     userName = uiState.userName,
                     userBalance = uiState.userBalance,
-                    onSearchClick = { /* TODO: Implement search */ },
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
                     onTopUpClick = onNavigateToTopUp,
                     onNavigateToProfile = onNavigateToProfile
                 )
@@ -92,19 +96,21 @@ fun DashboardScreen(
                     }
                 }
 
-                FeaturesSection(onFeatureClick = { featureId ->
-                    when (featureId) {
-                        "service_type" -> onNavigateToServiceType()
-                        "nearest_location" -> onNavigateToLocation()
-                        "cart" -> onNavigateToCart()
-                        "voucher" -> onNavigateToVoucher()
-                        "top_up" -> onNavigateToTopUp()
-                        "history" -> onNavigateToHistory()
-                        "in_process" -> onNavigateToInProcess()
-                    }
-                })
+                FeaturesSection(
+                    onFeatureClick = { featureId ->
+                        when (featureId) {
+                            "service_type" -> onNavigateToServiceType()
+                            "nearest_location" -> onNavigateToLocation()
+                            "cart" -> onNavigateToCart()
+                            "voucher" -> onNavigateToVoucher()
+                            "top_up" -> onNavigateToTopUp()
+                            "history" -> onNavigateToHistory()
+                            "in_process" -> onNavigateToInProcess()
+                        }
+                    },
+                    searchQuery = searchQuery
+                )
 
-                // "Promo" title now here
                 Text(
                     text = "Promo",
                     style = MaterialTheme.typography.headlineLarge,
@@ -112,7 +118,6 @@ fun DashboardScreen(
                     modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
                 )
 
-                // Promo Section now only contains the LazyColumn of vouchers
                 PromoSection(
                     vouchers = uiState.vouchers,
                     onClaimVoucherClick = { voucherId ->
@@ -124,14 +129,13 @@ fun DashboardScreen(
     }
 }
 
-// --- Semua Composable private di bawah ini tidak perlu diubah, mereka sudah bagus ---
-
 @Composable
 private fun HeaderSection(
     user: User?,
     userName: String,
     userBalance: String,
-    onSearchClick: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
     onTopUpClick: () -> Unit,
     onNavigateToProfile: () -> Unit
 ) {
@@ -159,25 +163,31 @@ private fun HeaderSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
-                    onClick = onSearchClick,
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
                     modifier = Modifier
                         .weight(1f)
-                        .height(44.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        text = "Search",
-                        color = MaterialTheme.colorScheme.onBackground,
-                        style = MaterialTheme.typography.labelLarge
-                    )
-                }
+                        .heightIn(min = 56.dp)
+                        .background(Color.White, shape = RoundedCornerShape(50)),
+
+                    placeholder = { Text("Cari layanan atau fitur...") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Search Icon"
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(50),
+                    colors = SearchBarColors()
+                )
+
                 Spacer(modifier = Modifier.width(16.dp))
                 Box(modifier = Modifier.clickable { onNavigateToProfile() }) {
                     InitialsProfilePicture(
                         name = user?.name ?: "",
-                        size = 62.dp,
+                        size = 56.dp,
                         textStyle = MaterialTheme.typography.headlineSmall.copy(color = Color.White)
                     )
                 }
@@ -207,7 +217,7 @@ private fun HeaderSection(
                         )
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = userBalance, // Menggunakan userBalance yang sudah diformat
+                            text = userBalance,
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
@@ -219,20 +229,29 @@ private fun HeaderSection(
                                 .background(MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f))
                         )
                         Spacer(modifier = Modifier.width(16.dp))
-                        Row(
-                            modifier = Modifier.clickable { onTopUpClick() },
-                            verticalAlignment = Alignment.CenterVertically
+                        FilledTonalButton(
+                            onClick = onTopUpClick,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = Color.Transparent,
+                                contentColor = White
+                            ),
+                            shape = MaterialTheme.shapes.small,
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .clip(MaterialTheme.shapes.small)
+                                .background(Brush.horizontalGradient(colors = listOf(lightNavy, Color(0xFF90A4AE)))),
+                            contentPadding = PaddingValues(all = 8.dp)
                         ) {
                             Icon(
                                 Icons.Default.Add, "Top Up",
-                                tint = MaterialTheme.colorScheme.onBackground,
+                                tint = White,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 "Top Up",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onBackground
+                                color = White
                             )
                         }
                     }
@@ -243,7 +262,7 @@ private fun HeaderSection(
 }
 
 @Composable
-private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
+private fun FeaturesSection(onFeatureClick: (String) -> Unit, searchQuery: String) {
     Column(modifier = Modifier.padding(16.dp)) {
         Text(
             text = "Features",
@@ -260,11 +279,20 @@ private fun FeaturesSection(onFeatureClick: (String) -> Unit) {
             FeatureItem("History", IconType.ImageVectorIcon(Icons.Default.History), "history"),
             FeatureItem("Top Up", IconType.ImageVectorIcon(Icons.Default.AccountBalanceWallet), "top_up")
         )
+
+        val filteredFeatures = remember(searchQuery) {
+            if (searchQuery.isBlank()) {
+                features
+            } else {
+                features.filter { it.name.contains(searchQuery, ignoreCase = true) }
+            }
+        }
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(horizontal = 4.dp)
         ) {
-            items(features) { feature ->
+            items(filteredFeatures) { feature ->
                 FeatureCard(feature = feature, onClick = { onFeatureClick(feature.id) })
             }
         }
@@ -278,8 +306,8 @@ private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
             .width(106.dp)
             .height(172.dp)
             .clickable { onClick() },
-        shape = MaterialTheme.shapes.medium, // DIUBAH
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant), // DIUBAH
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
@@ -297,14 +325,14 @@ private fun FeatureCard(feature: FeatureItem, onClick: () -> Unit) {
                 is IconType.ImageVectorIcon -> Icon(
                     icon.imageVector, feature.name,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant // DIUBAH
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = feature.name,
-                style = MaterialTheme.typography.labelLarge, // DIUBAH
-                color = MaterialTheme.colorScheme.onSurfaceVariant, // DIUBAH
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
         }
@@ -320,7 +348,7 @@ fun PromoSection(
     LazyColumn(
         modifier = modifier
             .fillMaxWidth()
-            .wrapContentHeight() // You might want to adjust this based on your layout needs
+            .wrapContentHeight()
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -342,20 +370,17 @@ fun PromoSection(
     }
 }
 
-
-// DESAIN M3 VOUCHER CARD BARU
 @Composable
 private fun M3VoucherCard(voucher: Voucher, onUseClick: () -> Unit) {
     Card(
-        modifier = Modifier.width(300.dp), // Beri lebar agar konsisten di LazyRow
+        modifier = Modifier.width(375.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
-            modifier = Modifier.height(IntrinsicSize.Min) // Tinggi fleksibel sesuai konten
+            modifier = Modifier.height(IntrinsicSize.Min)
         ) {
-            // Bagian Kiri (Ikon dan Aksen)
             Column(
                 modifier = Modifier
                     .background(DarkBlue)
@@ -372,10 +397,8 @@ private fun M3VoucherCard(voucher: Voucher, onUseClick: () -> Unit) {
                 )
             }
 
-            // Garis putus-putus sebagai pemisah
             DashedDivider()
 
-            // Bagian Kanan (Detail dan Tombol)
             Column(
                 modifier = Modifier
                     .padding(16.dp)
@@ -388,7 +411,7 @@ private fun M3VoucherCard(voucher: Voucher, onUseClick: () -> Unit) {
                     color = DarkBlueText
                 )
                 Text(
-                    text = "Diskon senilai Rp ${voucher.discount_value}",
+                    text = "Diskon senilai ${formatRupiah(voucher.discount_value)}",
                     style = MaterialTheme.typography.bodyMedium,
                     color = BlackText,
                     modifier = Modifier.padding(top = 4.dp)
@@ -412,7 +435,6 @@ private fun M3VoucherCard(voucher: Voucher, onUseClick: () -> Unit) {
     }
 }
 
-// Composable helper untuk membuat garis putus-putus
 @Composable
 fun DashedDivider() {
     val pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
@@ -430,82 +452,20 @@ fun DashedDivider() {
     }
 }
 
+@Composable
+fun SearchBarColors(): TextFieldColors {
+    return TextFieldDefaults.colors(
+        // Warna saat fokus
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
 
-// Data classes
+        focusedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
 sealed class IconType {
     data class ImageVectorIcon(val imageVector: ImageVector) : IconType()
     data class DrawableResource(val id: Int) : IconType()
 }
 data class FeatureItem(val name: String, val icon: IconType, val id: String)
-
-//
-//@Preview(showBackground = true, name = "Dashboard Normal State")
-//@Composable
-//fun DashboardScreenPreview() {
-//    LaundryGoTheme {
-//        DashboardScreenContent(
-//            user = User(userId = "preview_id", name = "Saoirse"),
-//            userName = "Saoirse",
-//            userBalance = "1.500.000",
-//            error = null,
-//            onTopUpClick = {},
-//            onSearchClick = {},
-//            onFeatureClick = {},
-//            onClaimVoucherClick = {},
-//            onNavigateToServiceType = {},
-//            onNavigateToLocation = {},
-//            onNavigateToCart = {},
-//            onNavigateToVoucher = {},
-//            onNavigateToTopUp = {},
-//            onNavigateToProfile = {},
-//            onNavigateToHistory = {},
-//            vouchers =listOf(
-//                Voucher(
-//                    voucher_code = "DISKON10",
-//                    discount_type = "fixed",
-//                    discount_value = 10000,
-//                    is_active = true,
-//                    valid_from = null,
-//                    valid_until = null,
-//                    documentId = "voucher_001"
-//                )
-//            )
-//        )
-//    }
-//}
-//
-//@Preview(showBackground = true, name = "Dashboard Error State")
-//@Composable
-//fun DashboardScreenErrorPreview() {
-//    LaundryGoTheme {
-//        // Preview untuk kondisi saat ada error
-//        DashboardScreenContent(
-//            user = null,
-//            userName = "User",
-//            userBalance = "0",
-//            error = "Gagal memuat data pengguna. Silakan coba lagi.",
-//            onTopUpClick = {},
-//            onSearchClick = {},
-//            onFeatureClick = {},
-//            onClaimVoucherClick = {},
-//            onNavigateToServiceType = {},
-//            onNavigateToLocation = {},
-//            onNavigateToCart = {},
-//            onNavigateToVoucher = {},
-//            onNavigateToTopUp = {},
-//            onNavigateToProfile = {},
-//            onNavigateToHistory = {},
-//            vouchers =listOf(
-//                Voucher(
-//                    voucher_code = "DISKON10",
-//                    discount_type = "fixed",
-//                    discount_value = 10000,
-//                    is_active = true,
-//                    valid_from = null,
-//                    valid_until = null,
-//                    documentId = "voucher_001"
-//                )
-//            )
-//        )
-//    }
-//}

@@ -1,10 +1,12 @@
 package com.android.laundrygo.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.android.laundrygo.repository.AuthRepository
 import com.android.laundrygo.repository.AuthRepositoryImpl
+import com.google.firebase.firestore.toObject
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +25,8 @@ data class LoginUiState(
 
 sealed interface LoginEvent {
     data object NavigateToDashboard : LoginEvent
-    data class ShowMessage(val message: String) : LoginEvent // Event baru untuk menampilkan pesan
+    data object NavigateToAdminDashboard : LoginEvent // Add this
+    data class ShowMessage(val message: String) : LoginEvent
 }
 
 class LoginViewModel(private val repository: AuthRepository) : ViewModel() {
@@ -51,13 +54,60 @@ class LoginViewModel(private val repository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val state = _uiState.value
-            val result = repository.loginUser(state.email.trim(), state.password)
-            result.onSuccess {
-                _eventFlow.emit(LoginEvent.NavigateToDashboard)
-            }.onFailure {
-                _uiState.update { s -> s.copy(errorMessage = it.message) }
+            val input = state.email.trim()
+
+            if (input.contains("@")) {
+                // Treat as email login
+                val result = repository.loginUser(input, state.password)
+                result.onSuccess { firebaseUser ->
+                    handleLoginSuccess(firebaseUser.uid)
+                }.onFailure {
+                    _uiState.update { s -> s.copy(errorMessage = it.message) }
+                }
+            } else {
+                // Treat as username login
+                repository.getUserByUsername(input).collect { usernameResult ->
+                    usernameResult.onSuccess { querySnapshot ->
+                        if (querySnapshot.isEmpty) {
+                            _uiState.update { s -> s.copy(errorMessage = "Username tidak ditemukan") }
+                        } else {
+                            val userDocument = querySnapshot.documents.firstOrNull()
+                            val email = userDocument?.toObject<com.android.laundrygo.model.User>()?.email
+                            Log.d("LoginViewModel", "Email retrieved from username: $email") // Added line
+                            if (!email.isNullOrBlank()) {
+                                val result = repository.loginUser(email, state.password)
+                                result.onSuccess { firebaseUser ->
+                                    handleLoginSuccess(firebaseUser.uid)
+                                }.onFailure {
+                                    _uiState.update { s -> s.copy(errorMessage = it.message) }
+                                }
+                            } else {
+                                _uiState.update { s -> s.copy(errorMessage = "Gagal mendapatkan email dari username") }
+                            }
+                        }
+                    }.onFailure {
+                        _uiState.update { s -> s.copy(errorMessage = it.message) }
+                    }
+                }
             }
             _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    private fun LoginViewModel.handleLoginSuccess(userId: String) {
+        viewModelScope.launch {
+            repository.getUserDocument(userId).collect { userDocumentResult ->
+                userDocumentResult.onSuccess { documentSnapshot ->
+                    val isAdmin = documentSnapshot?.getBoolean("admin") ?: false
+                    if (isAdmin) {
+                        _eventFlow.emit(LoginEvent.NavigateToAdminDashboard)
+                    } else {
+                        _eventFlow.emit(LoginEvent.NavigateToDashboard)
+                    }
+                }.onFailure {
+                    _uiState.update { s -> s.copy(errorMessage = it.message) }
+                }
+            }
         }
     }
 
@@ -66,8 +116,21 @@ class LoginViewModel(private val repository: AuthRepository) : ViewModel() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val result = repository.loginWithGoogle(idToken)
-            result.onSuccess {
-                _eventFlow.emit(LoginEvent.NavigateToDashboard)
+            result.onSuccess { firebaseUser ->
+                firebaseUser?.uid?.let { userId ->
+                    repository.getUserDocument(userId).collect { userDocumentResult ->
+                        userDocumentResult.onSuccess { documentSnapshot ->
+                            val isAdmin = documentSnapshot?.getBoolean("admin") ?: false
+                            if (isAdmin) {
+                                _eventFlow.emit(LoginEvent.NavigateToAdminDashboard)
+                            } else {
+                                _eventFlow.emit(LoginEvent.NavigateToDashboard)
+                            }
+                        }.onFailure {
+                            _uiState.update { s -> s.copy(errorMessage = it.message) }
+                        }
+                    }
+                }
             }.onFailure {
                 _uiState.update { s -> s.copy(errorMessage = it.message) }
             }

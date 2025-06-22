@@ -1,14 +1,9 @@
 package com.android.laundrygo.navigation
 
-import android.content.Context
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -25,7 +20,6 @@ import com.android.laundrygo.repository.AuthRepositoryImpl
 import com.android.laundrygo.repository.ServiceRepository
 import com.android.laundrygo.repository.ServiceRepositoryImpl
 import com.android.laundrygo.ui.screens.*
-import com.android.laundrygo.ui.screens.payment.PaymentScreen
 import com.android.laundrygo.viewmodel.*
 
 object Graph {
@@ -63,6 +57,12 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
                 onBackClicked = { navController.navigateUp() },
                 onLoginSuccess = {
                     navController.navigate(Graph.MAIN) {
+                        popUpTo(Graph.AUTHENTICATION) { inclusive = true }
+                    }
+                },
+                onNavigateToAdminDashboard = { // Add this lambda
+                    // Replace 'Screen.AdminDashboard.route' with the actual route to your admin panel
+                    navController.navigate("admin_dashboard") {
                         popUpTo(Graph.AUTHENTICATION) { inclusive = true }
                     }
                 },
@@ -258,7 +258,12 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         ) { backStackEntry ->
             val transactionId = backStackEntry.arguments?.getString(KEY_TRANSACTION_ID) ?: ""
             val paymentViewModel: PaymentViewModel = viewModel(
-                factory = PaymentViewModelFactory(serviceRepository, authRepository, transactionId, backStackEntry.savedStateHandle)
+                factory = PaymentViewModel.PaymentViewModelFactory(
+                    serviceRepository,
+                    authRepository,
+                    transactionId,
+                    backStackEntry.savedStateHandle
+                )
             )
             PaymentScreen(
                 onBackClicked = { navController.navigateUp() },
