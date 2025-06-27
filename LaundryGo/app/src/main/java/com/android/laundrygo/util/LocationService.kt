@@ -1,4 +1,4 @@
-package com.android.laundrygo.model
+package com.android.laundrygo.util
 
 import android.annotation.SuppressLint
 import android.content.Context

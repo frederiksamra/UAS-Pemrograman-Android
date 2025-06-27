@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.location.Location
 import androidx.lifecycle.*
-import com.android.laundrygo.model.LocationService
+import com.android.laundrygo.util.LocationService
 import com.android.laundrygo.model.LaundryLocation
 import com.android.laundrygo.repository.LaundryRepository
 
