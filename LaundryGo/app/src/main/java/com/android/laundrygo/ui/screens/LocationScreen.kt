@@ -4,6 +4,7 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Color.Companion.DarkGray
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -218,8 +221,81 @@ fun rememberMapViewWithLifecycle(): MapView {
 }
 
 
-@Preview(showBackground = true)
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, name = "Location Screen Preview")
 @Composable
 fun LocationScreenPreview() {
+    val dummyLaundry = LaundryLocation(
+        id = "1",
+        name = "LaundryGo Express",
+        latitude = -6.200000,
+        longitude = 106.816666,
+        address = "Jl. Sudirman No.1",
+        city = "Jakarta",
+        state = "DKI Jakarta",
+        zipCode = "10220",
+        country = "Indonesia"
+    )
 
+    // Tampilan tiruan tanpa MapView
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Nearest LaundryGo") },
+                navigationIcon = {
+                    IconButton(onClick = {}) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_black),
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkBlue)
+            )
+        }
+    ) { padding ->
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(padding)) {
+
+            // Placeholder Box untuk Map
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .background(Color(0xFFE0E0E0)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("Map Preview (Dummy)", color = DarkGray)
+            }
+
+            // Detail dummy card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(8.dp),
+                colors = CardDefaults.cardColors(containerColor = DarkBlue)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(dummyLaundry.name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(dummyLaundry.address, color = Color.White)
+                        Text("${dummyLaundry.city}, ${dummyLaundry.state} ${dummyLaundry.zipCode}", color = Color.White)
+                    }
+                    Image(
+                        painter = painterResource(id = R.drawable.laundry_image),
+                        contentDescription = null,
+                        modifier = Modifier.size(72.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+    }
 }
