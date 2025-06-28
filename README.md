@@ -31,7 +31,7 @@ Panduan lengkap untuk menggunakan aplikasi **Laundry Go**, mulai dari login, pen
 * **Akun Admin**
 
   * Username: `admin` atau Email: `admin@laundrygo.com`
-  * Password: `admin`
+  * Password: `admin123`
 
 ---
 
