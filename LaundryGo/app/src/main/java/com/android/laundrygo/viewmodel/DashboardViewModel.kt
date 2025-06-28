@@ -15,7 +15,6 @@ import kotlinx.coroutines.tasks.await
 import java.text.NumberFormat
 import java.util.*
 
-// Gunakan UiState agar konsisten dengan ViewModel lain
 data class DashboardUiState(
     val user: User? = null,
     val userName: String = "User",
@@ -33,15 +32,13 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
 
     init {
-        // Panggil fungsi yang sekarang menggunakan Flow
         observeUserProfile()
         loadPublicVouchers()
     }
 
-    // PERBAIKAN UTAMA: Menggunakan Flow untuk data user agar real-time
     private fun observeUserProfile() {
         viewModelScope.launch {
-            authRepository.getCurrentUserProfile() // Fungsi ini sekarang harus ada di AuthRepository
+            authRepository.getCurrentUserProfile()
                 .onEach { result ->
                     result.fold(
                         onSuccess = { user ->
@@ -85,9 +82,8 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
                     validFromOk && validUntilOk
                 }
 
-                // Fetch claimed vouchers for the current user
                 authRepository.getMyVouchers()
-                    .take(1) // We only need the current list once
+                    .take(1)
                     .collect { claimedVouchersResult ->
                         claimedVouchersResult.fold(
                             onSuccess = { claimedVouchers ->
@@ -99,7 +95,6 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
                             onFailure = { e ->
                                 _uiState.update { it.copy(error = "Gagal memuat voucher yang sudah diklaim: ${e.message}", isLoading = false) }
                                 Log.e("VoucherDebug", "Error loading claimed vouchers", e)
-                                // If loading claimed vouchers fails, still show the public vouchers (without filtering) to avoid blocking the dashboard
                                 _uiState.update { it.copy(vouchers = publicVouchersList, isLoading = false) }
                             }
                         )
@@ -117,8 +112,19 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
             val voucherToClaim = _uiState.value.vouchers.firstOrNull { it.voucherDocumentId == voucherId }
             if (voucherToClaim != null) {
                 authRepository.claimVoucher(voucherToClaim).onSuccess {
-                    // After successfully claiming, reload the public vouchers to update the list
-                    loadPublicVouchers()
+                    // kita langsung perbarui state di aplikasi.
+
+                    // 1. Ambil daftar voucher yang ada saat ini di UI.
+                    val currentVouchers = _uiState.value.vouchers
+
+                    // 2. Buat daftar baru dengan membuang voucher yang baru saja diklaim.
+                    val updatedVouchers = currentVouchers.filterNot { it.voucherDocumentId == voucherId }
+
+                    // 3. Update UI dengan daftar yang sudah diperbarui.
+                    _uiState.update { it.copy(vouchers = updatedVouchers) }
+
+                    // Ini lebih cepat, efisien, dan tidak akan mengalami race condition.
+
                 }.onFailure { exception ->
                     _uiState.update { it.copy(error = "Gagal klaim voucher: ${exception.message}") }
                 }
@@ -131,6 +137,7 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
         format.maximumFractionDigits = 0
         return format.format(amount)
     }
+
     companion object {
         fun provideFactory(repository: AuthRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

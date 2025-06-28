@@ -20,24 +20,31 @@ import com.android.laundrygo.repository.AuthRepositoryImpl
 import com.android.laundrygo.repository.ServiceRepository
 import com.android.laundrygo.repository.ServiceRepositoryImpl
 import com.android.laundrygo.ui.screens.*
+import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.*
 
 object Graph {
     const val ROOT = "root_graph"
     const val AUTHENTICATION = "auth_graph"
     const val MAIN = "main_graph"
+    const val ADMIN = "admin_graph"
 }
 
 @Composable
 fun AppNavigationGraph() {
     val navController = rememberNavController()
+
+    val serviceRepository: ServiceRepository = remember { ServiceRepositoryImpl() }
+    val authRepository: AuthRepository = remember { AuthRepositoryImpl() }
+
     NavHost(
         navController = navController,
         startDestination = Graph.AUTHENTICATION,
         route = Graph.ROOT
     ) {
         authGraph(navController)
-        mainGraph(navController)
+        mainGraph(navController, serviceRepository, authRepository)
+        adminGraph(navController)
     }
 }
 
@@ -53,6 +60,7 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
             )
         }
         composable(route = Screen.Login.route) {
+            val factory = remember { LoginViewModelFactory() }
             LoginScreen(
                 onBackClicked = { navController.navigateUp() },
                 onLoginSuccess = {
@@ -60,46 +68,47 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
                         popUpTo(Graph.AUTHENTICATION) { inclusive = true }
                     }
                 },
-                onNavigateToAdminDashboard = { // Add this lambda
-                    // Replace 'Screen.AdminDashboard.route' with the actual route to your admin panel
-                    navController.navigate("admin_dashboard") {
+                onNavigateToAdminDashboard = {
+                    navController.navigate(Graph.ADMIN) {
                         popUpTo(Graph.AUTHENTICATION) { inclusive = true }
                     }
                 },
-                viewModel = viewModel(factory = LoginViewModelFactory())
+                viewModel = viewModel(factory = factory)
             )
         }
         composable(route = Screen.Register.route) {
+            val factory = remember { RegisterViewModelFactory() }
             RegisterScreen(
                 onBackClicked = { navController.navigateUp() },
                 onRegistrationSuccess = { navController.popBackStack() },
-                viewModel = viewModel(factory = RegisterViewModelFactory())
+                viewModel = viewModel(factory = factory)
             )
         }
     }
 }
 
-private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
+// 1. Menerima repository sebagai parameter untuk dependency injection
+private fun NavGraphBuilder.mainGraph(
+    navController: NavHostController,
+    serviceRepository: ServiceRepository,
+    authRepository: AuthRepository
+) {
     navigation(
         startDestination = Screen.Dashboard.route,
         route = Graph.MAIN
     ) {
-        // Buat instance repository sekali untuk di-share
-        val serviceRepository: ServiceRepository = ServiceRepositoryImpl()
-        val authRepository: AuthRepository = AuthRepositoryImpl()
-
-        // Helper untuk Shared CartViewModel
+        // Helper untuk Shared CartViewModel yang sekarang menggunakan repository dari parameter
         val getSharedCartViewModel: @Composable (NavBackStackEntry) -> CartViewModel = { entry ->
             val parentEntry = remember(entry) { navController.getBackStackEntry(Graph.MAIN) }
-            viewModel(parentEntry, factory = CartViewModelFactory(serviceRepository))
+            val factory = remember { CartViewModelFactory(serviceRepository) }
+            viewModel(parentEntry, factory = factory)
         }
 
         // --- Layar Utama ---
         composable(route = Screen.Dashboard.route) {
-            val factory = DashboardViewModel.provideFactory(authRepository)
-            val dashboardViewModel: DashboardViewModel = viewModel(factory = factory)
+            val factory = remember { DashboardViewModel.provideFactory(authRepository) }
             DashboardScreen(
-                viewModel = dashboardViewModel,
+                viewModel = viewModel(factory = factory),
                 onNavigateToServiceType = { navController.navigate(Screen.ServiceType.route) },
                 onNavigateToLocation = { navController.navigate(Screen.Location.route) },
                 onNavigateToCart = { navController.navigate(Screen.Cart.route) },
@@ -111,9 +120,9 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             )
         }
 
-        // --- Pendaftaran Semua Rute Aplikasi ---
+        // --- Pendaftaran Semua Rute Aplikasi Pengguna ---
         composable(route = Screen.InProcess.route) {
-            val factory = InProcessViewModel.provideFactory(serviceRepository)
+            val factory = remember { InProcessViewModel.provideFactory(serviceRepository) }
             InProcessScreen(
                 viewModel = viewModel(factory = factory),
                 onBackClick = { navController.navigateUp() }
@@ -125,7 +134,7 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.TopUp.route) {
-            val factory = TopUpViewModel.provideFactory(authRepository)
+            val factory = remember { TopUpViewModel.provideFactory(authRepository) }
             TopUpScreen(
                 viewModel = viewModel(factory = factory),
                 onBackClick = { navController.navigateUp() }
@@ -133,20 +142,22 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
         }
 
         composable(route = Screen.Voucher.route) {
-            val factory = VoucherViewModel.provideFactory(authRepository)
-            val voucherViewModel: VoucherViewModel = viewModel(factory = factory)
+            val factory = remember { VoucherViewModel.provideFactory(authRepository) }
             VoucherScreen(
                 onBackClick = { navController.popBackStack() },
                 onVoucherSelected = { voucher ->
-                    navController.previousBackStackEntry?.savedStateHandle?.set("selected_voucher", voucher)
+                    navController.previousBackStackEntry?.savedStateHandle?.set(
+                        "selected_voucher",
+                        voucher
+                    )
                     navController.popBackStack()
                 },
-                voucherViewModel = voucherViewModel
+                voucherViewModel = viewModel(factory = factory)
             )
         }
 
         composable(route = Screen.History.route) {
-            val factory = HistoryViewModelFactory(serviceRepository)
+            val factory = remember { HistoryViewModelFactory(serviceRepository) }
             HistoryScreen(
                 viewModel = viewModel(factory = factory),
                 onBack = { navController.navigateUp() },
@@ -156,36 +167,42 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             )
         }
 
-        composable(route = Screen.HistoryDetail.route) { backStackEntry ->
-            val orderId = backStackEntry.arguments?.getString("orderId") ?: ""
+        composable(
+            route = Screen.HistoryDetail.routeWithArgs,
+            arguments = Screen.HistoryDetail.arguments
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getString(Screen.HistoryDetail.ORDER_ID_ARG) ?: "" // Gunakan konstanta agar lebih aman
             HistoryDetailScreen(orderId = orderId, onBack = { navController.navigateUp() })
         }
 
         composable(route = Screen.Profile.route) {
-            val factory = ProfileViewModelFactory(authRepository)
-            val profileViewModel: ProfileViewModel = viewModel(factory = factory)
+            val factory = remember { ProfileViewModelFactory(authRepository) }
             ProfileScreen(
-                viewModel = profileViewModel,
+                viewModel = viewModel(factory = factory),
                 onNavigateBack = { navController.navigateUp() },
                 onLogout = {
-                    navController.navigate(Graph.AUTHENTICATION) { popUpTo(Graph.MAIN) { inclusive = true } }
+                    navController.navigate(Graph.AUTHENTICATION) {
+                        popUpTo(Graph.ROOT) { inclusive = true }
+                    }
                 }
             )
         }
 
         // --- Layar-layar Layanan ---
         composable(route = Screen.ServiceType.route) {
-            ServiceTypeScreen(onBack = { navController.navigateUp() }, onServiceSelected = { serviceName ->
-                val route = when (serviceName) {
-                    "Pakaian Harian" -> Screen.ShirtPants.route
-                    "Perawatan Khusus" -> Screen.SpecialTreatment.route
-                    "Boneka" -> Screen.Doll.route
-                    "Tas" -> Screen.Bag.route
-                    "Sepatu" -> Screen.Shoes.route
-                    else -> null
-                }
-                route?.let { navController.navigate(it) }
-            })
+            ServiceTypeScreen(
+                onBack = { navController.navigateUp() },
+                onServiceSelected = { serviceName ->
+                    val route = when (serviceName) {
+                        "Pakaian Harian" -> Screen.ShirtPants.route
+                        "Perawatan Khusus" -> Screen.SpecialTreatment.route
+                        "Boneka" -> Screen.Doll.route
+                        "Tas" -> Screen.Bag.route
+                        "Sepatu" -> Screen.Shoes.route
+                        else -> null
+                    }
+                    route?.let { navController.navigate(it) }
+                })
         }
 
         val serviceScreens = listOf(
@@ -203,7 +220,10 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
                     Screen.Doll -> DollViewModel.provideFactory(serviceRepository)
                     Screen.ShirtPants -> ShirtPantsViewModel.provideFactory(serviceRepository)
                     Screen.Shoes -> ShoesViewModel.provideFactory(serviceRepository)
-                    Screen.SpecialTreatment -> SpecialTreatmentViewModel.provideFactory(serviceRepository)
+                    Screen.SpecialTreatment -> SpecialTreatmentViewModel.provideFactory(
+                        serviceRepository
+                    )
+
                     else -> throw IllegalArgumentException("Route tidak dikenal untuk service screen")
                 }
 
@@ -211,11 +231,66 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
 
                 // Menampilkan layar yang sesuai berdasarkan rute
                 when (screen) {
-                    Screen.Bag -> BagScreen(viewModel = localViewModel as BagViewModel, onBack = { navController.navigateUp() }, onCartClick = { navController.navigate(Screen.Cart.route) }, onAddClick = { service -> cartViewModel.addItem(service); Toast.makeText(context, "${service.title} ditambahkan", Toast.LENGTH_SHORT).show() })
-                    Screen.Doll -> DollScreen(viewModel = localViewModel as DollViewModel, onBack = { navController.navigateUp() }, onCartClick = { navController.navigate(Screen.Cart.route) }, onAddClick = { service -> cartViewModel.addItem(service); Toast.makeText(context, "${service.title} ditambahkan", Toast.LENGTH_SHORT).show() })
-                    Screen.ShirtPants -> ShirtPantsScreen(viewModel = localViewModel as ShirtPantsViewModel, onBack = { navController.navigateUp() }, onCartClick = { navController.navigate(Screen.Cart.route) }, onAddClick = { service -> cartViewModel.addItem(service); Toast.makeText(context, "${service.title} ditambahkan", Toast.LENGTH_SHORT).show() })
-                    Screen.Shoes -> ShoesScreen(viewModel = localViewModel as ShoesViewModel, onBack = { navController.navigateUp() }, onCartClick = { navController.navigate(Screen.Cart.route) }, onAddClick = { service -> cartViewModel.addItem(service); Toast.makeText(context, "${service.title} ditambahkan", Toast.LENGTH_SHORT).show() })
-                    Screen.SpecialTreatment -> SpecialTreatmentScreen(viewModel = localViewModel as SpecialTreatmentViewModel, onBack = { navController.navigateUp() }, onCartClick = { navController.navigate(Screen.Cart.route) }, onAddClick = { service -> cartViewModel.addItem(service); Toast.makeText(context, "${service.title} ditambahkan", Toast.LENGTH_SHORT).show() })
+                    Screen.Bag -> BagScreen(
+                        viewModel = localViewModel as BagViewModel,
+                        onBack = { navController.navigateUp() },
+                        onCartClick = { navController.navigate(Screen.Cart.route) },
+                        onAddClick = { service ->
+                            cartViewModel.addItem(service); Toast.makeText(
+                            context,
+                            "${service.title} ditambahkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        })
+
+                    Screen.Doll -> DollScreen(
+                        viewModel = localViewModel as DollViewModel,
+                        onBack = { navController.navigateUp() },
+                        onCartClick = { navController.navigate(Screen.Cart.route) },
+                        onAddClick = { service ->
+                            cartViewModel.addItem(service); Toast.makeText(
+                            context,
+                            "${service.title} ditambahkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        })
+
+                    Screen.ShirtPants -> ShirtPantsScreen(
+                        viewModel = localViewModel as ShirtPantsViewModel,
+                        onBack = { navController.navigateUp() },
+                        onCartClick = { navController.navigate(Screen.Cart.route) },
+                        onAddClick = { service ->
+                            cartViewModel.addItem(service); Toast.makeText(
+                            context,
+                            "${service.title} ditambahkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        })
+
+                    Screen.Shoes -> ShoesScreen(
+                        viewModel = localViewModel as ShoesViewModel,
+                        onBack = { navController.navigateUp() },
+                        onCartClick = { navController.navigate(Screen.Cart.route) },
+                        onAddClick = { service ->
+                            cartViewModel.addItem(service); Toast.makeText(
+                            context,
+                            "${service.title} ditambahkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        })
+
+                    Screen.SpecialTreatment -> SpecialTreatmentScreen(
+                        viewModel = localViewModel as SpecialTreatmentViewModel,
+                        onBack = { navController.navigateUp() },
+                        onCartClick = { navController.navigate(Screen.Cart.route) },
+                        onAddClick = { service ->
+                            cartViewModel.addItem(service); Toast.makeText(
+                            context,
+                            "${service.title} ditambahkan",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        })
+
                     else -> {}
                 }
             }
@@ -227,55 +302,70 @@ private fun NavGraphBuilder.mainGraph(navController: NavHostController) {
             CartScreen(
                 viewModel = cartViewModel,
                 onBack = { navController.navigateUp() },
-                onCheckoutClick = { totalPrice ->
-                    navController.navigate("${Screen.Transaction.route}/$totalPrice")
+                onCheckoutClick = { totalPrice -> // totalPrice di sini adalah Double
+                    // KOREKSI: Cukup konversi ke Float sebelum dimasukkan ke dalam fungsi
+                    navController.navigate(Screen.Transaction.createRoute(totalPrice.toFloat()))
                 }
             )
         }
 
-        val KEY_TRANSACTION_ID = "transaction_id"
-
         composable(
-            route = "${Screen.Transaction.route}/{totalPrice}",
-            arguments = listOf(navArgument("totalPrice") { type = NavType.FloatType })
+            route = Screen.Transaction.routeWithArgs,
+            arguments = Screen.Transaction.arguments
         ) { backStackEntry ->
-            val price = backStackEntry.arguments?.getFloat("totalPrice") ?: 0f
-            val transactionViewModel: TransactionViewModel = viewModel(
-                factory = TransactionViewModel.provideFactory(serviceRepository, price.toDouble())
-            )
+            val price = backStackEntry.arguments?.getFloat(Screen.Transaction.totalPriceArg) ?: 0f
+            val factory = remember(price) { TransactionViewModel.provideFactory(serviceRepository, price.toDouble()) }
             TransactionScreen(
-                viewModel = transactionViewModel,
+                viewModel = viewModel(factory = factory),
                 onBack = { navController.navigateUp() },
                 onCheckoutSuccess = { transactionId ->
-                    navController.navigate("${Screen.Payment.route}/$transactionId")
+                    navController.navigate(Screen.Payment.createRoute(transactionId))
                 }
             )
         }
 
         composable(
-            route = "${Screen.Payment.route}/{$KEY_TRANSACTION_ID}",
-            arguments = listOf(navArgument(KEY_TRANSACTION_ID) { type = NavType.StringType })
+            route = Screen.Payment.routeWithArgs,
+            arguments = Screen.Payment.arguments
         ) { backStackEntry ->
-            val transactionId = backStackEntry.arguments?.getString(KEY_TRANSACTION_ID) ?: ""
-            val paymentViewModel: PaymentViewModel = viewModel(
-                factory = PaymentViewModel.PaymentViewModelFactory(
+            val transactionId = backStackEntry.arguments?.getString(Screen.Payment.transactionIdArg) ?: ""
+            val factory = remember(transactionId) {
+                PaymentViewModel.PaymentViewModelFactory(
                     serviceRepository,
                     authRepository,
                     transactionId,
                     backStackEntry.savedStateHandle
                 )
-            )
+            }
             PaymentScreen(
                 onBackClicked = { navController.navigateUp() },
                 onPaymentSuccess = {
+                    // KOREKSI KRITIS: Membersihkan backstack hingga ke Dashboard
                     navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Graph.MAIN) { inclusive = true }
+                        popUpTo(Screen.Dashboard.route) {
+                            inclusive = true
+                        }
                     }
                 },
                 onNavigateToTopUp = { navController.navigate(Screen.TopUp.route) },
                 onNavigateToVoucher = { navController.navigate(Screen.Voucher.route) },
-                paymentViewModel = paymentViewModel
+                paymentViewModel = viewModel(factory = factory)
             )
         }
+    }
+}
+
+private fun NavGraphBuilder.adminGraph(navController: NavHostController) {
+    navigation(
+        // The start destination of this graph is the screen that contains the Scaffold and the nested NavHost.
+        startDestination = Screen.AdminMain.route,
+        route = Graph.ADMIN
+    ) {
+        composable(route = Screen.AdminMain.route) {
+            // AdminMainScreen now correctly receives the root NavController
+            AdminMainScreen(rootNavController = navController)
+        }
+        // The other admin destinations (Users, Vouchers, Orders) are now handled
+        // INSIDE AdminMainScreen.kt, so they are removed from here.
     }
 }
