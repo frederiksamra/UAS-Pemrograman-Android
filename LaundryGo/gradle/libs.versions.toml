@@ -7,14 +7,16 @@ junitVersion = "1.2.1"
 espressoCore = "3.6.1"
 lifecycleRuntimeKtx = "2.9.1"
 activityCompose = "1.10.1"
-composeBom = "2025.06.00"
+composeBom = "2025.06.01"
 firebaseAuthKtx = "23.2.1"
 firebaseFirestoreKtx = "25.1.4"
-runtimeLivedata = "1.8.2"
+runtimeLivedata = "1.8.3"
 playServicesLocation = "21.3.0"
 googleGmsGoogleServices = "4.4.2"
 preferenceKtx = "1.2.1"
-foundationLayoutAndroid = "1.8.2"
+foundationLayoutAndroid = "1.8.3"
+composeMaterial = "1.4.1"
+composeMaterial3 = "1.5.0-beta04"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -37,6 +39,8 @@ androidx-runtime-livedata = { group = "androidx.compose.runtime", name = "runtim
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
 androidx-preference-ktx = { group = "androidx.preference", name = "preference-ktx", version.ref = "preferenceKtx" }
 androidx-foundation-layout-android = { group = "androidx.compose.foundation", name = "foundation-layout-android", version.ref = "foundationLayoutAndroid" }
+androidx-compose-material = { group = "androidx.wear.compose", name = "compose-material", version.ref = "composeMaterial" }
+androidx-compose-material3 = { group = "androidx.wear.compose", name = "compose-material3", version.ref = "composeMaterial3" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

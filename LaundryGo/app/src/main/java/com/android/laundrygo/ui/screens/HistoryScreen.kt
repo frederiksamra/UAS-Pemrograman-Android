@@ -1,6 +1,5 @@
 package com.android.laundrygo.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -11,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +33,17 @@ fun HistoryScreen(
     onCheckClick: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val statusList = remember {
+        listOf(
+            "Menunggu Pembayaran",
+            "Lunas",
+            "Pick Up",
+            "Washing",
+            "Washed",
+            "Delivery",
+            "Completed"
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -72,9 +83,10 @@ fun HistoryScreen(
                         HistoryItem(
                             transaction = transaction,
                             onCheckClick = onCheckClick,
-                            onDeleteClick = { transactionId -> // Handle delete click
+                            onDeleteClick = { transactionId ->
                                 viewModel.deleteTransaction(transactionId)
-                            }
+                            },
+                            statusList = statusList
                         )
                     }
                 }
@@ -87,25 +99,32 @@ fun HistoryScreen(
 fun HistoryItem(
     transaction: Transaction,
     onCheckClick: (String) -> Unit,
-    onDeleteClick: (String) -> Unit // Add this callback
+    onDeleteClick: (String) -> Unit,
+    statusList: List<String>
 ) {
+    val currentStatus = statusList.getOrNull(transaction.status) ?: "Status Tidak Diketahui"
     val (cardColor, textColor, buttonContainerColor) = when (transaction.status) {
-        "Lunas" -> Triple(Cream, DarkBlue, DarkBlue)
-        "Menunggu Pembayaran" -> Triple(DarkBlue, Cream, Cream)
-        "Dicuci", "Selesai Dicuci", "Dalam Pengantaran" -> Triple(Color.White, DarkBlue, DarkBlue)
+        1 -> Triple(Cream, DarkBlue, DarkBlue) // Lunas
+        0 -> Triple(DarkBlue, Cream, Cream) // Menunggu Pembayaran
+        2 -> Triple(Color.White, DarkBlue, DarkBlue) // Pick Up
+        3 -> Triple(Color.White, DarkBlue, DarkBlue) // Washing
+        4 -> Triple(Color.White, DarkBlue, DarkBlue) // Washed
+        5 -> Triple(Color.White, DarkBlue, DarkBlue) // Delivery
+        6 -> Triple(Color.White, Color.Gray, DarkBlue) // Completed
         else -> Triple(Color.White, Color.Gray, DarkBlue)
     }
 
     val statusColor = when (transaction.status) {
-        "Lunas" -> Color(0xFF1F9E56)
-        "Menunggu Pembayaran" -> Color(0xFFF2994A)
-        "Dicuci", "Selesai Dicuci", "Dalam Pengantaran" -> DarkBlue
+        1 -> Color(0xFF1F9E56) // Lunas
+        0 -> Color(0xFFF2994A) // Menunggu Pembayaran
+        2, 3, 4, 5 -> DarkBlue // Pick Up, Washing, Washed, Delivery
+        6 -> Color.Gray // Completed
         else -> Color.Gray
     }
 
     val buttonTextColor = when (transaction.status) {
-        "Lunas" -> Cream
-        "Menunggu Pembayaran" -> DarkBlue
+        1 -> Cream // Lunas
+        0 -> DarkBlue // Menunggu Pembayaran
         else -> Color.White
     }
 
@@ -132,7 +151,7 @@ fun HistoryItem(
                     shape = MaterialTheme.shapes.small
                 ) {
                     Text(
-                        text = transaction.status,
+                        text = currentStatus,
                         color = statusColor,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -149,15 +168,15 @@ fun HistoryItem(
             Spacer(modifier = Modifier.height(12.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween, // Changed to SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { onDeleteClick(transaction.id) }) { // Delete button on the left
+                IconButton(onClick = { onDeleteClick(transaction.id) }) {
                     Icon(Icons.Default.Delete, contentDescription = "Hapus Riwayat", tint = MaterialTheme.colorScheme.error)
                 }
-                Row( // Row for the Check Detail button to align it to the end
+                Row(
                     horizontalArrangement = Arrangement.End,
-                    modifier = Modifier.weight(1f, fill = false) // Use weight to push to the end
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     Button(
                         onClick = { onCheckClick(transaction.id) },

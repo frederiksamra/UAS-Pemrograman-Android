@@ -11,5 +11,6 @@ data class User(
     val address: String = "",
     val username: String = "",
     val balance: Double = 0.0,
+    val admin: Boolean = false,
     @ServerTimestamp val createdAt: Timestamp? = null
 )

@@ -6,12 +6,11 @@ import com.android.laundrygo.model.LaundryService
 import com.android.laundrygo.model.Transaction
 import com.android.laundrygo.model.User
 import com.android.laundrygo.model.Voucher
-import com.android.laundrygo.navigation.Screen
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.ktx.toObject
+import kotlinx.coroutines.CancellationException // PERBAIKAN: Tambahkan import ini
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -31,16 +30,21 @@ interface ServiceRepository {
     // Transaksi
     suspend fun createTransaction(transaction: Transaction): Result<String>
     suspend fun getTransactionById(transactionId: String): Flow<Result<Transaction?>>
-    suspend fun updateTransactionStatus(transactionId: String, newStatus: String): Result<Unit>
+
+    // PERBAIKAN: Hapus fungsi yang menggunakan status String untuk menghindari inkonsistensi
+    // suspend fun updateTransactionStatus(transactionId: String, newStatus: String): Result<Unit>
+
     suspend fun updateTransactionPaymentMethod(transactionId: String, paymentMethod: String): Result<Unit>
     suspend fun updateTransactionVoucherId(transactionId: String, voucherId: String): Result<Unit>
-    suspend fun getVoucherById(voucherId: String): Flow<Result<Voucher?>> // Add this line
+    suspend fun getVoucherById(voucherId: String): Flow<Result<Voucher?>>
+    fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>>
+    suspend fun deleteTransaction(transactionId: String): Result<Unit>
     // User & Pembayaran
     fun getCurrentUserProfile(): Flow<Result<User?>>
     suspend fun processBalancePayment(userId: String, amountToDeduct: Double): Result<Unit>
-    // --- FUNGSI BARU YANG DIBUTUHKAN ---
-    fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>>
-    suspend fun deleteTransaction(transactionId: String): Result<Unit>
+    // Admin
+    fun getAllOrders(): Flow<Result<List<Transaction>>>
+    suspend fun updateOrderStatus(transactionId: String, status: Int): Result<Unit>
 }
 
 // --- IMPLEMENTASI ---
@@ -51,10 +55,7 @@ class ServiceRepositoryImpl : ServiceRepository {
 
     override suspend fun getServices(category: String): Result<List<LaundryService>> {
         return try {
-            val snapshot = firestore.collection("services")
-                .whereEqualTo("category", category)
-                .get()
-                .await()
+            val snapshot = firestore.collection("services").whereEqualTo("category", category).get().await()
             val services = snapshot.toObjects(LaundryService::class.java)
             Log.d(TAG, "Successfully fetched ${services.size} services for category '$category'.")
             Result.success(services)
@@ -65,19 +66,11 @@ class ServiceRepositoryImpl : ServiceRepository {
     }
 
     override fun getCartItems(userId: String): Flow<Result<List<CartItem>>> = callbackFlow {
-        if (userId.isEmpty()) {
-            trySend(Result.failure(IllegalArgumentException("User ID tidak boleh kosong.")))
-            return@callbackFlow
-        }
+        if (userId.isEmpty()) { trySend(Result.failure(IllegalArgumentException("User ID tidak boleh kosong."))); return@callbackFlow }
         val listener = firestore.collection("carts").document(userId).collection("items")
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(Result.failure(error)); return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    val items = snapshot.toObjects(CartItem::class.java)
-                    trySend(Result.success(items))
-                }
+                if (error != null) { trySend(Result.failure(error)); return@addSnapshotListener }
+                if (snapshot != null) { trySend(Result.success(snapshot.toObjects(CartItem::class.java))) }
             }
         awaitClose { listener.remove() }
     }
@@ -91,31 +84,22 @@ class ServiceRepositoryImpl : ServiceRepository {
                     transaction.update(itemRef, "quantity", FieldValue.increment(1))
                 } else {
                     val newItem = CartItem(
-                        id = service.id,
-                        name = service.title,
-                        description = service.description,
-                        price = service.price, // <-- PERBAIKAN: Tidak perlu .toDouble() lagi
-                        quantity = 1,
-                        unit = service.unit,
-                        category = service.category
+                        id = service.id, name = service.title, description = service.description,
+                        price = service.price, quantity = 1, unit = service.unit, category = service.category
                     )
                     transaction.set(itemRef, newItem)
                 }
                 null
             }.await()
             emit(Result.success(Unit))
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { emit(Result.failure(e)) }
     }
 
     override fun removeItemFromCart(userId: String, itemId: String): Flow<Result<Unit>> = flow {
         try {
             firestore.collection("carts").document(userId).collection("items").document(itemId).delete().await()
             emit(Result.success(Unit))
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { emit(Result.failure(e)) }
     }
 
     override fun updateItemQuantity(userId: String, itemId: String, change: Int): Flow<Result<Unit>> = flow {
@@ -125,17 +109,11 @@ class ServiceRepositoryImpl : ServiceRepository {
                 val snapshot = transaction.get(itemRef)
                 val currentQuantity = snapshot.getLong("quantity") ?: 0L
                 val newQuantity = currentQuantity + change
-                if (newQuantity > 0) {
-                    transaction.update(itemRef, "quantity", newQuantity)
-                } else {
-                    transaction.delete(itemRef)
-                }
+                if (newQuantity > 0) { transaction.update(itemRef, "quantity", newQuantity) } else { transaction.delete(itemRef) }
                 null
             }.await()
             emit(Result.success(Unit))
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { emit(Result.failure(e)) }
     }
 
     override suspend fun createTransaction(transaction: com.android.laundrygo.model.Transaction): Result<String> {
@@ -153,14 +131,9 @@ class ServiceRepositoryImpl : ServiceRepository {
         return try {
             val cartItemsRef = firestore.collection("carts").document(userId).collection("items")
             val snapshot = cartItemsRef.get().await()
-
-            // Hapus semua dokumen di dalam sub-koleksi 'items' satu per satu
             val batch = firestore.batch()
-            for (document in snapshot.documents) {
-                batch.delete(document.reference)
-            }
+            for (document in snapshot.documents) { batch.delete(document.reference) }
             batch.commit().await()
-
             Log.d(TAG, "Successfully cleared cart for user: $userId")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -169,40 +142,35 @@ class ServiceRepositoryImpl : ServiceRepository {
         }
     }
 
-    override suspend fun getTransactionById(transactionId: String): Flow<Result<Transaction?>> = flow { // Return a Flow
+    override suspend fun getTransactionById(transactionId: String): Flow<Result<Transaction?>> = flow {
         try {
             val snapshot = firestore.collection("transactions").document(transactionId).get().await()
-            val transaction = snapshot.toObject(Transaction::class.java)
-            emit(Result.success(transaction))
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+            emit(Result.success(snapshot.toObject(Transaction::class.java)))
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { emit(Result.failure(e)) }
     }
 
-    override suspend fun getVoucherById(voucherId: String): Flow<Result<Voucher?>> = flow { // Implement this function
+    override suspend fun getVoucherById(voucherId: String): Flow<Result<Voucher?>> = flow {
         try {
             val snapshot = firestore.collection("vouchers").document(voucherId).get().await()
-            val voucher = snapshot.toObject(Voucher::class.java)
-            emit(Result.success(voucher))
-        } catch (e: Exception) {
-            emit(Result.failure(e))
-        }
+            emit(Result.success(snapshot.toObject(Voucher::class.java)))
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { emit(Result.failure(e)) }
     }
 
+    // PERBAIKAN: Implementasi fungsi ini dihapus untuk mencegah penyimpanan status sebagai String.
+    /*
     override suspend fun updateTransactionStatus(transactionId: String, newStatus: String): Result<Unit> {
         return try {
-            firestore.collection("transactions").document(transactionId)
-                .update("status", newStatus).await()
+            firestore.collection("transactions").document(transactionId).update("status", newStatus).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }
     }
+    */
 
     override suspend fun updateTransactionPaymentMethod(transactionId: String, paymentMethod: String): Result<Unit> {
         return try {
-            firestore.collection("transactions").document(transactionId)
-                .update("paymentMethod", paymentMethod).await()
+            firestore.collection("transactions").document(transactionId).update("paymentMethod", paymentMethod).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -211,8 +179,7 @@ class ServiceRepositoryImpl : ServiceRepository {
 
     override suspend fun updateTransactionVoucherId(transactionId: String, voucherId: String): Result<Unit> {
         return try {
-            firestore.collection("transactions").document(transactionId)
-                .update("voucherId", voucherId).await()
+            firestore.collection("transactions").document(transactionId).update("voucherId", voucherId).await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -221,20 +188,11 @@ class ServiceRepositoryImpl : ServiceRepository {
 
     override fun getCurrentUserProfile(): Flow<Result<User?>> = callbackFlow {
         val userId = auth.currentUser?.uid
-        if (userId.isNullOrEmpty()) {
-            trySend(Result.failure(Exception("User tidak login.")))
-            return@callbackFlow
-        }
+        if (userId.isNullOrEmpty()) { trySend(Result.failure(Exception("User tidak login."))); return@callbackFlow }
         val listener = firestore.collection("users").document(userId)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(Result.failure(error)); return@addSnapshotListener
-                }
-                if (snapshot != null && snapshot.exists()) {
-                    trySend(Result.success(snapshot.toObject<User>()))
-                } else {
-                    trySend(Result.success(null))
-                }
+                if (error != null) { trySend(Result.failure(error)); return@addSnapshotListener }
+                if (snapshot != null && snapshot.exists()) { trySend(Result.success(snapshot.toObject(User::class.java))) } else { trySend(Result.success(null)) }
             }
         awaitClose { listener.remove() }
     }
@@ -245,11 +203,7 @@ class ServiceRepositoryImpl : ServiceRepository {
             firestore.runTransaction { transaction ->
                 val userSnapshot = transaction.get(userRef)
                 val currentBalance = userSnapshot.getDouble("balance") ?: 0.0
-
-                if (currentBalance < amountToDeduct) {
-                    throw Exception("Saldo tidak mencukupi.") // Ini akan ditangkap oleh blok catch
-                }
-
+                if (currentBalance < amountToDeduct) { throw Exception("Saldo tidak mencukupi.") }
                 val newBalance = currentBalance - amountToDeduct
                 transaction.update(userRef, "balance", newBalance)
             }.await()
@@ -269,25 +223,28 @@ class ServiceRepositoryImpl : ServiceRepository {
     }
 
     override fun getTransactionsForUser(userId: String): Flow<Result<List<Transaction>>> = callbackFlow {
-        val listener = firestore.collection("transactions")
-            .whereEqualTo("userId", userId) // Filter berdasarkan ID pengguna
-            .orderBy("createdAt", Query.Direction.DESCENDING) // Urutkan dari yang terbaru
+        val listener = firestore.collection("transactions").whereEqualTo("userId", userId)
+            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
-                if (error != null) {
-                    trySend(Result.failure(error))
-                    return@addSnapshotListener
-                }
-                if (snapshot != null) {
-                    // Gunakan toObjects karena Transaction model sudah siap
-                    val transactions = snapshot.toObjects(Transaction::class.java)
-                    trySend(Result.success(transactions))
-                } else {
-                    // Kirim list kosong jika tidak ada data
-                    trySend(Result.success(emptyList()))
-                }
+                if (error != null) { trySend(Result.failure(error)); return@addSnapshotListener }
+                if (snapshot != null) { trySend(Result.success(snapshot.toObjects(Transaction::class.java))) } else { trySend(Result.success(emptyList())) }
             }
-
-        // Hapus listener saat tidak digunakan lagi
         awaitClose { listener.remove() }
+    }
+
+    override fun getAllOrders(): Flow<Result<List<Transaction>>> = flow {
+        try {
+            val snapshot = firestore.collection("transactions").get().await()
+            emit(Result.success(snapshot.toObjects(Transaction::class.java)))
+        } catch (e: CancellationException) { throw e } catch (e: Exception) { emit(Result.failure(e)) }
+    }
+
+    override suspend fun updateOrderStatus(transactionId: String, status: Int): Result<Unit> {
+        return try {
+            firestore.collection("transactions").document(transactionId).update("status", status).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
     }
 }

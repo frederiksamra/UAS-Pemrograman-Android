@@ -32,6 +32,17 @@ fun HistoryDetailScreen(
     viewModel: HistoryDetailViewModel = viewModel(factory = HistoryDetailViewModelFactory(orderId = orderId))
 ) {
     val state by viewModel.state.collectAsState()
+    val statusList = remember {
+        listOf(
+            "Menunggu Pembayaran",
+            "Lunas",
+            "Pick Up",
+            "Washing",
+            "Washed",
+            "Delivery",
+            "Completed"
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -65,10 +76,10 @@ fun HistoryDetailScreen(
                 .padding(padding)
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally // Add this line
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (state.isLoading) {
-                CircularProgressIndicator() // Remove the align modifier here
+                CircularProgressIndicator()
             } else if (state.error != null) {
                 Text(
                     text = "Error: ${state.error}",
@@ -83,7 +94,9 @@ fun HistoryDetailScreen(
                     "Phone Number" to state.transaction?.customerPhone.orEmpty(),
                     "Total payment" to state.totalPaymentFormatted,
                     "Payment method" to state.transaction?.paymentMethod.orEmpty(),
-                    "Payment status" to state.transaction?.status.orEmpty(),
+                    "Payment status" to state.transaction?.status?.let { statusIndex ->
+                        statusList.getOrNull(statusIndex) ?: "Status Tidak Diketahui"
+                    }.orEmpty(),
                     "Address" to state.transaction?.customerAddress.orEmpty()
                 )
 

@@ -11,75 +11,78 @@ import kotlinx.coroutines.launch
 
 class InProcessViewModel(private val repository: ServiceRepository) : ViewModel() {
 
-    private val _selectedIndex = MutableStateFlow(0)
-    val selectedIndex: StateFlow<Int> get() = _selectedIndex
-
     private val _isLoading = MutableStateFlow(true)
-    val isLoading: StateFlow<Boolean> get() = _isLoading
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
     private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> get() = _errorMessage
+    val errorMessage: StateFlow<String?> = _errorMessage.asStateFlow()
 
-    // State untuk menampung transaksi yang sedang berjalan
-    private val _activeTransaction = MutableStateFlow<Transaction?>(null)
-    val activeTransaction: StateFlow<Transaction?> get() = _activeTransaction
+    private val _inProcessTransactions = MutableStateFlow<List<Transaction>>(emptyList())
+    val inProcessTransactions: StateFlow<List<Transaction>> = _inProcessTransactions.asStateFlow()
 
-    private val userId = FirebaseAuth.getInstance().currentUser?.uid
+    private val _selectedTransaction = MutableStateFlow<Transaction?>(null)
+    val selectedTransaction: StateFlow<Transaction?> = _selectedTransaction.asStateFlow()
 
     init {
-        // Saat ViewModel dibuat, langsung cari transaksi yang sedang diproses
-        fetchInProcessTransaction()
-    }
-
-    fun selectTab(index: Int) {
-        _selectedIndex.value = index
+        fetchInProcessTransactions()
     }
 
     /**
-     * Mengambil data transaksi yang sedang dalam proses dari Firestore
+     * Memperbarui transaksi yang sedang dipilih oleh UI.
      */
-    fun fetchInProcessTransaction() {
+    fun selectTransaction(transaction: Transaction) {
+        _selectedTransaction.value = transaction
+    }
+
+    /**
+     * Mengambil dan memfilter transaksi yang sedang berjalan dari Firestore.
+     * Versi ini sudah dikoreksi untuk bekerja dengan repository yang mengembalikan Flow<Result<T>>.
+     */
+    fun fetchInProcessTransactions() {
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId.isNullOrEmpty()) {
-            _errorMessage.value = "User tidak login."
+            _errorMessage.value = "Pengguna tidak terautentikasi."
             _isLoading.value = false
             return
         }
 
         viewModelScope.launch {
             _isLoading.value = true
-            // Mengambil semua transaksi user
+
             repository.getTransactionsForUser(userId)
                 .onEach { result ->
+                    // Menggunakan fold untuk menangani Result.success atau Result.failure dengan aman
                     result.fold(
                         onSuccess = { transactions ->
-                            // Cari transaksi pertama yang statusnya bukan "Lunas" atau "Selesai"
-                            val inProcessTx = transactions.firstOrNull {
-                                it.status != "Lunas" && it.status != "Selesai" // Sesuaikan dengan status Anda
+                            // 1. Logika filter yang benar, diterapkan pada List<Transaction>
+                            val filteredTransactions = transactions.filter { transaction ->
+                                transaction.status >= 2 && transaction.status < 7 // Status Lunas (2) s/d Delivery (6)
                             }
-                            _activeTransaction.value = inProcessTx
-                            updateTabBasedOnStatus(inProcessTx?.status)
-                            _isLoading.value = false
+                            _inProcessTransactions.value = filteredTransactions
+                            _errorMessage.value = null // Hapus pesan error lama jika berhasil
+
+                            // 2. Logika untuk selectedTransaction yang konsisten
+                            val currentSelected = _selectedTransaction.value
+                            if (currentSelected == null || !filteredTransactions.any { it.id == currentSelected.id }) {
+                                _selectedTransaction.value = filteredTransactions.firstOrNull()
+                            }
                         },
-                        onFailure = {
-                            _errorMessage.value = "Gagal memuat status: ${it.message}"
-                            _isLoading.value = false
+                        onFailure = { exception ->
+                            // 3. Menangani kegagalan dari Result
+                            _errorMessage.value = "Gagal memuat transaksi: ${exception.message}"
                         }
                     )
-                }.launchIn(this)
+                }
+                .onCompletion {
+                    // 4. onCompletion akan dipanggil setelah Flow selesai, baik berhasil maupun gagal.
+                    // Ini memastikan loading indicator selalu dimatikan.
+                    _isLoading.value = false
+                }
+                .launchIn(viewModelScope)
         }
     }
 
-    private fun updateTabBasedOnStatus(status: String?) {
-        _selectedIndex.value = when (status) {
-            "Menunggu Penjemputan" -> 0 // Pick Up
-            "Dicuci" -> 1 // Washing
-            "Selesai Dicuci" -> 2 // Washed
-            "Dalam Pengantaran" -> 3 // Delivery
-            else -> 0 // Default ke tab pertama jika tidak ada atau status tidak dikenali
-        }
-    }
-
-    // Factory untuk InProcessViewModel
+    // Factory untuk InProcessViewModel (sudah benar, tidak perlu diubah)
     companion object {
         fun provideFactory(repository: ServiceRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
