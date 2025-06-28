@@ -6,9 +6,9 @@ Panduan lengkap untuk menggunakan aplikasi **Laundry Go**, mulai dari login, pen
 
 ## 📌 Daftar Anggota Tim
 
-* **71220913** – Frederik Samra Sarongallo
-* **71220932** – Chrisilia Aveline
-* **71220954** – Andrea Marie Baikole
+- **[71220913 - Frederik Samra Sarongallo](https://github.com/frederiksamra)**  
+- **[71220932 - Chrisilia Aveline](https://github.com/hawkgave)**  
+- **[71220954 - Andrea Marie Baikole](https://github.com/AndreaB54)**  
 
 ---
 
