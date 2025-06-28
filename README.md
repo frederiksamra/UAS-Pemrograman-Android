@@ -1,92 +1,170 @@
-# Laundry Go - Panduan Penggunaan
+# 🧺 Laundry Go - Panduan Penggunaan
 
-## 📌 Daftar Anggota
-- **[71220913 - Frederik Samra Sarongallo](https://github.com/frederiksamra)**
-- **[71220932 - Chrisilia Aveline](https://github.com/hawkgave)**
-- **[71220954 - Andrea Marie Baikole](https://github.com/AndreaB54)**
+Panduan lengkap untuk menggunakan aplikasi **Laundry Go**, mulai dari login, penggunaan fitur, hingga manajemen admin.
 
 ---
 
-## 🚀 Halaman Login/Register
-- Saat pertama kali membuka aplikasi, pengguna akan dihadapkan dengan halaman **Login** atau **Register**.
-- Jika sudah memiliki akun, pengguna dapat langsung **Login**.
-- **Akun yang dapat digunakan untuk login:**
-  - **Email**: `aveline@gmail.com`
-  - **Password**: `aveline`
-- Pengguna juga dapat **Login dengan akun Google**.
-- Jika belum memiliki akun dan tidak ingin menggunakan akun Google, pengguna dapat melakukan **registrasi terlebih dahulu**.
+## 📌 Daftar Anggota Tim
+
+* **71220913** – Frederik Samra Sarongallo
+* **71220932** – Chrisilia Aveline
+* **71220954** – Andrea Marie Baikole
 
 ---
 
-## 🏠 Halaman Dashboard
-Setelah berhasil login, pengguna akan masuk ke **Dashboard** yang memiliki beberapa fitur utama:
+## 🚀 Memulai Aplikasi
 
-- **👤 Profile** → Dapat diakses dengan memilih ikon profile.
-- **🧺 Service Type** → Pilihan jenis layanan laundry.
-- **🛒 Cart** → Tempat penyimpanan pesanan sebelum pembayaran.
-- **📍 Nearest LaundryGo** → Menampilkan lokasi LaundryGo terdekat.
-- **🔄 In Process** → Menampilkan status pesanan yang sedang diproses.
-- **🎟️ Your Voucher** → Menampilkan daftar voucher yang dimiliki.
-- **📜 History** → Menampilkan riwayat pesanan.
-- **💰 Top Up** → Untuk mengisi saldo akun.
+### Halaman Login & Registrasi
 
----
+* Saat pertama kali membuka aplikasi, pengguna akan dihadapkan dengan halaman **Login** atau **Register**.
+* Jika sudah memiliki akun, pengguna dapat langsung **Login**.
+* Pengguna juga dapat **Login dengan akun Google**.
+* Jika belum memiliki akun, tekan tombol **Register** untuk mendaftar.
 
-## 👤 Halaman Profile
-- Menampilkan **data pengguna**.
-- Terdapat tombol **Logout** untuk keluar dari akun.
+### Akun untuk Pengujian
 
----
+* **Akun Pengguna Biasa**
 
-## 💰 Halaman Top Up
-- Pengguna dapat melakukan pengisian saldo.
-- Tekan tombol **Pay** untuk memulai proses top up.
-- Proses akan berlangsung selama **5 detik**, lalu muncul notifikasi sukses.
-- Untuk kembali ke halaman Top Up, tekan tombol **Done**.
+  * Email: `aveline@gmail.com`
+  * Password: `aveline`
+
+* **Akun Admin**
+
+  * Username: `admin` atau Email: `admin@laundrygo.com`
+  * Password: `admin`
 
 ---
 
-## 🛎️ Halaman Service Type
-- Pengguna dapat memilih **5 jenis layanan** yang tersedia.
-- Pilihan layanan dapat dipilih dengan menekan **tulisan (bukan gambar)** dari setiap service type.
+## 🏠 Fitur Pengguna (Dashboard)
+
+Setelah berhasil login, pengguna akan masuk ke **Dashboard** yang menyediakan fitur-fitur utama berikut:
+
+### Fitur Utama
+
+* **👤 Profil Pengguna & Saldo**
+  Menampilkan nama pengguna, saldo akun, serta tombol **Top Up**.
+
+* **🧺 Service Type**
+  Memilih jenis layanan laundry yang diinginkan.
+
+* **🛒 Cart**
+  Menyimpan pesanan sebelum pembayaran.
+
+* **📍 Nearest LaundryGo**
+  Menampilkan lokasi LaundryGo terdekat melalui peta.
+
+* **🔄 In Process**
+  Melacak status pesanan yang sedang diproses.
+
+* **🎟️ Your Voucher**
+  Melihat daftar voucher yang sudah diklaim.
+
+* **📜 History**
+  Menampilkan riwayat semua pesanan yang telah selesai.
+
+* **💰 Top Up**
+  Halaman khusus untuk mengisi saldo akun.
 
 ---
 
-## 🛒 Halaman Cart
-- Setelah memilih layanan, pengguna dapat masuk ke menu **Cart**.
-- Tekan tombol **Check Out** untuk melanjutkan pembayaran.
-- Tekan tombol **Pay** untuk memulai proses pembayaran.
-- Proses akan berlangsung selama **5 detik**, lalu muncul notifikasi sukses.
-- Untuk kembali ke halaman Dashboard, tekan tombol **Done**.
+## ✨ Promo & Voucher
+
+### Promo
+
+* Menampilkan daftar voucher promo yang tersedia.
+* Pengguna dapat menekan tombol **Claim** untuk memindahkan voucher ke koleksi pribadi.
+* Voucher yang telah diklaim akan hilang dari daftar ini.
+
+### Your Voucher
+
+* Menampilkan daftar **voucher yang telah diklaim** dan siap digunakan saat pembayaran.
 
 ---
 
-## 📍 Halaman Nearest LaundryGo
-- Aplikasi akan **mengakses lokasi pengguna**.
-- Menampilkan daftar **LaundryGo terdekat**.
+## 📖 Alur Penggunaan Fitur
+
+### 👤 Halaman Profil
+
+* Menampilkan data pengguna: **nama, email, dan nomor telepon**.
+* Tombol **Logout** untuk keluar dari akun.
 
 ---
 
-## 🔄 Halaman In Process
-- Menampilkan **status pesanan** yang sedang diproses.
-- Proses berlangsung selama **9 detik** hingga pesanan selesai.
-- Setelah proses selesai, tekan tombol **Back** untuk kembali ke Dashboard.
+### 💰 Halaman Top Up
+
+* Pengguna dapat mengisi saldo dengan nominal yang diinginkan.
+* Tekan tombol **Pay** untuk memulai proses.
+* Proses berlangsung selama **5 detik**, lalu muncul notifikasi sukses.
+* Saldo di Dashboard akan diperbarui secara otomatis.
 
 ---
 
-## 🎟️ Halaman Your Voucher
-- Menampilkan daftar **voucher** yang dimiliki oleh pengguna.
+### 🛒 Alur Pemesanan
+
+**(Service Type → Cart → Pembayaran)**
+
+1. **Service Type**
+
+   * Pilih dari 5 jenis layanan laundry (contoh: Pakaian Harian, Tas, Sepatu, dll).
+   * Tekan tombol **Add** untuk menambahkan item ke keranjang.
+
+2. **Cart**
+
+   * Menampilkan semua item yang dipilih.
+   * Pengguna dapat menambah/mengurangi jumlah item.
+
+3. **Check Out**
+
+   * Tekan tombol **Check Out** untuk lanjut ke halaman detail transaksi.
+   * Isi nama, alamat, dan jadwal penjemputan.
+
+4. **Pembayaran**
+
+   * Tekan **Lanjutkan ke Pembayaran**.
+   * Di halaman pembayaran, tekan tombol **Pay**.
+   * Proses disimulasikan selama **5 detik**, lalu kembali ke Dashboard.
 
 ---
 
-## 📜 Halaman History
-- Menampilkan daftar **riwayat pesanan**.
-- Dapat menekan tombol **Check** pada history ke-2 untuk melihat **detail pesanan**.
+### 🔄 Halaman In Process & History
+
+* **In Process**
+  Menampilkan pesanan yang sedang dalam proses laundry.
+
+* **History**
+  Menampilkan seluruh pesanan yang telah selesai.
+  Tekan tombol **Check** untuk melihat rincian setiap pesanan.
 
 ---
 
-## 🔙 Navigasi
-> **Semua tombol "Back" dapat digunakan dengan normal.**
+## 👑 Fitur Admin
+
+Login menggunakan akun admin akan menampilkan **Admin Dashboard** dengan tiga menu utama:
+
+### 👨‍👩‍👧‍👦 Manajemen Pengguna
+
+* Melihat semua pengguna yang terdaftar (kecuali admin).
+* Admin dapat menghapus akun pengguna dari sistem.
+
+### 🎟️ Manajemen Voucher
+
+* Menampilkan semua voucher yang tersedia.
+* Tekan tombol **+** untuk menambahkan voucher baru.
+* Pilih jenis diskon: **Persen (%)** atau **Rupiah (Rp)**.
+* Atur tanggal kedaluwarsa saat pembuatan.
+
+### 📦 Manajemen Pesanan
+
+* Menampilkan seluruh pesanan aktif (sudah dibayar, belum selesai).
+* Admin dapat memperbarui status pesanan: **Pick Up**, **Washing**, dll.
+* Status sebelumnya tidak dapat dipilih kembali.
+* Tekan **Lihat Detail Pesanan** untuk menampilkan dialog pop-up berisi detail item dan ringkasan pembayaran.
+
+---
+
+## 🔙 Navigasi Umum
+
+> Semua tombol **Back** berfungsi normal untuk kembali ke halaman sebelumnya.
 
 ---
 
