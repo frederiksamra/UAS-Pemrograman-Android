@@ -150,7 +150,6 @@ private fun OrderDetailsDialogContent(detailState: OrderDetailState) {
         // --- Info Pesanan ---
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DialogDetailRow(label = "No. Order", value = order.id.take(8).uppercase())
-            // Gunakan customerName dan tambahkan alamat
             DialogDetailRow(label = "Nama Pemesan", value = order.customerName)
             DialogDetailRow(label = "Alamat", value = order.customerAddress)
             DialogDetailRow(label = "No. Telepon", value = order.customerPhone)
