@@ -1,5 +1,6 @@
 package com.android.laundrygo.ui.screens
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,11 +16,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,19 +34,27 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.android.laundrygo.R
 import com.android.laundrygo.model.User
 import com.android.laundrygo.model.Voucher
 import com.android.laundrygo.ui.InitialsProfilePicture
 import com.android.laundrygo.ui.theme.*
+import com.android.laundrygo.util.BiometricAuthManager
 import com.android.laundrygo.util.formatRupiah
+import com.android.laundrygo.viewmodel.BiometricAuthState
 import com.android.laundrygo.viewmodel.DashboardViewModel
 
+@SuppressLint("ContextCastToActivity")
 @Composable
 fun DashboardScreen(
     viewModel: DashboardViewModel,
@@ -55,7 +67,6 @@ fun DashboardScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToInProcess: () -> Unit
 ) {
-    // Ambil satu UiState object dari ViewModel
     val uiState by viewModel.uiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
 

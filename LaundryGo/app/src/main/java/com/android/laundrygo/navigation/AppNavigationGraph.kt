@@ -2,6 +2,9 @@ package com.android.laundrygo.navigation
 
 import android.widget.Toast
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
@@ -9,18 +12,14 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import androidx.navigation.navigation
 import com.android.laundrygo.repository.AuthRepository
-import com.android.laundrygo.repository.AuthRepositoryImpl
 import com.android.laundrygo.repository.ServiceRepository
-import com.android.laundrygo.repository.ServiceRepositoryImpl
 import com.android.laundrygo.ui.screens.*
-import com.android.laundrygo.ui.theme.LaundryGoTheme
 import com.android.laundrygo.viewmodel.*
 
 object Graph {
@@ -31,24 +30,40 @@ object Graph {
 }
 
 @Composable
-fun AppNavigationGraph() {
-    val navController = rememberNavController()
-
-    val serviceRepository: ServiceRepository = remember { ServiceRepositoryImpl() }
-    val authRepository: AuthRepository = remember { AuthRepositoryImpl() }
-
+fun AppNavigationGraph(
+    mainViewModel: MainViewModel,
+    serviceRepository: ServiceRepository,
+    authRepository: AuthRepository,
+    navController: NavHostController // ADD THIS PARAMETER
+) {
     NavHost(
-        navController = navController,
-        startDestination = Graph.AUTHENTICATION,
+        navController = navController, // Use the navController passed as a parameter
+        startDestination = "decider_route",
         route = Graph.ROOT
     ) {
-        authGraph(navController)
+        composable("decider_route") {
+            val startDestination by mainViewModel.startDestination.collectAsState()
+
+            LaunchedEffect(startDestination) {
+                startDestination?.let { destination ->
+                    navController.navigate(destination) {
+                        popUpTo("decider_route") { inclusive = true }
+                    }
+                }
+            }
+        }
+
+        authGraph(navController, serviceRepository, authRepository)
         mainGraph(navController, serviceRepository, authRepository)
         adminGraph(navController)
     }
 }
 
-private fun NavGraphBuilder.authGraph(navController: NavHostController) {
+private fun NavGraphBuilder.authGraph(
+    navController: NavHostController,
+    serviceRepository: ServiceRepository,
+    authRepository: AuthRepository
+) {
     navigation(
         startDestination = Screen.Start.route,
         route = Graph.AUTHENTICATION
@@ -64,13 +79,15 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
             LoginScreen(
                 onBackClicked = { navController.navigateUp() },
                 onLoginSuccess = {
+                    // Navigasi ke graph utama setelah login
                     navController.navigate(Graph.MAIN) {
-                        popUpTo(Graph.AUTHENTICATION) { inclusive = true }
+                        popUpTo(Graph.ROOT) { inclusive = true }
                     }
                 },
                 onNavigateToAdminDashboard = {
+                    // Navigasi ke graph admin setelah login
                     navController.navigate(Graph.ADMIN) {
-                        popUpTo(Graph.AUTHENTICATION) { inclusive = true }
+                        popUpTo(Graph.ROOT) { inclusive = true }
                     }
                 },
                 viewModel = viewModel(factory = factory)
@@ -87,7 +104,6 @@ private fun NavGraphBuilder.authGraph(navController: NavHostController) {
     }
 }
 
-// 1. Menerima repository sebagai parameter untuk dependency injection
 private fun NavGraphBuilder.mainGraph(
     navController: NavHostController,
     serviceRepository: ServiceRepository,
@@ -97,14 +113,12 @@ private fun NavGraphBuilder.mainGraph(
         startDestination = Screen.Dashboard.route,
         route = Graph.MAIN
     ) {
-        // Helper untuk Shared CartViewModel yang sekarang menggunakan repository dari parameter
         val getSharedCartViewModel: @Composable (NavBackStackEntry) -> CartViewModel = { entry ->
             val parentEntry = remember(entry) { navController.getBackStackEntry(Graph.MAIN) }
             val factory = remember { CartViewModelFactory(serviceRepository) }
             viewModel(parentEntry, factory = factory)
         }
 
-        // --- Layar Utama ---
         composable(route = Screen.Dashboard.route) {
             val factory = remember { DashboardViewModel.provideFactory(authRepository) }
             DashboardScreen(
@@ -357,15 +371,11 @@ private fun NavGraphBuilder.mainGraph(
 
 private fun NavGraphBuilder.adminGraph(navController: NavHostController) {
     navigation(
-        // The start destination of this graph is the screen that contains the Scaffold and the nested NavHost.
         startDestination = Screen.AdminMain.route,
         route = Graph.ADMIN
     ) {
         composable(route = Screen.AdminMain.route) {
-            // AdminMainScreen now correctly receives the root NavController
             AdminMainScreen(rootNavController = navController)
         }
-        // The other admin destinations (Users, Vouchers, Orders) are now handled
-        // INSIDE AdminMainScreen.kt, so they are removed from here.
     }
 }
