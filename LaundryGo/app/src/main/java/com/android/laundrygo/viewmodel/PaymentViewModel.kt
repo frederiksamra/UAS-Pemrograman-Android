@@ -99,7 +99,8 @@ class PaymentViewModel(
         savedStateHandle.getLiveData<Voucher>("selected_voucher").observeForever { voucher ->
             voucher?.let {
                 onVoucherSelected(it)
-                savedStateHandle.remove<Voucher>("selected_voucher")
+                // SOLUSI: Set ke null agar bisa di-trigger lagi nanti
+                savedStateHandle.set("selected_voucher", null)
             }
         }
     }

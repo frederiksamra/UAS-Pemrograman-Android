@@ -23,6 +23,7 @@ import com.android.laundrygo.viewmodel.HistoryDetailViewModel
 import com.android.laundrygo.viewmodel.HistoryDetailViewModelFactory
 import com.android.laundrygo.viewmodel.ProductDetail
 import androidx.compose.ui.text.style.TextAlign
+import com.android.laundrygo.util.formatRupiah
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,8 +107,16 @@ fun HistoryDetailScreen(
                 SectionTitle("Product Details")
                 ProductHeaderRow()
                 state.transaction?.items?.forEach {
-                    ProductRow(ProductDetail(it.name, it.price.toString(), it.quantity.toString(), (it.price * it.quantity).toString()))
+                    ProductRow(
+                        ProductDetail(
+                            name = it.name,
+                            price = formatRupiah(it.price),
+                            qty = it.quantity.toString(),
+                            subtotal = formatRupiah(it.price * it.quantity) // Diubah
+                        )
+                    )
                 } ?: Text("No items in this transaction")
+
 
                 Spacer(modifier = Modifier.height(16.dp))
 

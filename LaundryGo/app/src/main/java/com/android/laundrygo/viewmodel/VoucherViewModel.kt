@@ -23,7 +23,6 @@ class VoucherViewModel(private val authRepository: AuthRepository) : ViewModel()
     val uiState: StateFlow<VoucherUiState> = _uiState.asStateFlow()
 
     init {
-        // Mengambil voucher PRIBADI milik user
         fetchMyVouchers()
     }
 
@@ -34,7 +33,12 @@ class VoucherViewModel(private val authRepository: AuthRepository) : ViewModel()
                 .onEach { result ->
                     result.fold(
                         onSuccess = { myVouchers ->
-                            _uiState.update { it.copy(isLoading = false, vouchers = myVouchers, error = null) }
+                            val now = com.google.firebase.Timestamp.now()
+                            val validVouchers = myVouchers.filter { voucher ->
+                                // Simpan voucher jika tidak punya tanggal kedaluwarsa ATAU belum melewati tanggal kedaluwarsa
+                                voucher.valid_until == null || voucher.valid_until >= now
+                            }
+                            _uiState.update { it.copy(isLoading = false, vouchers = validVouchers, error = null) }
                         },
                         onFailure = { exception ->
                             _uiState.update { it.copy(isLoading = false, error = exception.message) }
