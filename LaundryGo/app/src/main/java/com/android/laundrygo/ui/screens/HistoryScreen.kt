@@ -102,29 +102,26 @@ fun HistoryItem(
     onDeleteClick: (String) -> Unit,
     statusList: List<String>
 ) {
-    val currentStatus = statusList.getOrNull(transaction.status) ?: "Status Tidak Diketahui"
+    val currentStatus = statusList.getOrNull(transaction.status - 1) ?: "Status Tidak Diketahui"
     val (cardColor, textColor, buttonContainerColor) = when (transaction.status) {
-        1 -> Triple(Cream, DarkBlue, DarkBlue) // Lunas
-        0 -> Triple(DarkBlue, Cream, Cream) // Menunggu Pembayaran
-        2 -> Triple(Color.White, DarkBlue, DarkBlue) // Pick Up
-        3 -> Triple(Color.White, DarkBlue, DarkBlue) // Washing
-        4 -> Triple(Color.White, DarkBlue, DarkBlue) // Washed
-        5 -> Triple(Color.White, DarkBlue, DarkBlue) // Delivery
-        6 -> Triple(Color.White, Color.Gray, DarkBlue) // Completed
+        1 -> Triple(Cream, DarkBlue, DarkBlue) // Menunggu Pembayaran (sebelumnya 0)
+        2 -> Triple(Color.White, DarkBlue, DarkBlue) // Lunas (sebelumnya 1)
+        3, 4, 5, 6 -> Triple(Color.White, DarkBlue, DarkBlue) // In Process
+        7 -> Triple(Color.White, Color.Gray, DarkBlue) // Completed (sebelumnya 6)
         else -> Triple(Color.White, Color.Gray, DarkBlue)
     }
 
     val statusColor = when (transaction.status) {
-        1 -> Color(0xFF1F9E56) // Lunas
-        0 -> Color(0xFFF2994A) // Menunggu Pembayaran
-        2, 3, 4, 5 -> DarkBlue // Pick Up, Washing, Washed, Delivery
-        6 -> Color.Gray // Completed
+        1 -> Color(0xFFF2994A) // Menunggu Pembayaran
+        2 -> Color(0xFF1F9E56) // Lunas
+        3, 4, 5, 6 -> DarkBlue // In Process
+        7 -> Color.Gray // Completed
         else -> Color.Gray
     }
 
     val buttonTextColor = when (transaction.status) {
-        1 -> Cream // Lunas
-        0 -> DarkBlue // Menunggu Pembayaran
+        1 -> DarkBlue // Menunggu Pembayaran
+        2 -> Cream // Lunas
         else -> Color.White
     }
 

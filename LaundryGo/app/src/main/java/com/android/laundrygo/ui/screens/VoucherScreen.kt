@@ -27,7 +27,6 @@ fun VoucherScreen(
     onVoucherSelected: (Voucher) -> Unit, // Callback untuk mengirim voucher
     voucherViewModel: VoucherViewModel
 ) {
-    // PERBAIKAN: Gunakan satu UiState object
     val uiState by voucherViewModel.uiState.collectAsState()
 
     Scaffold(
@@ -57,7 +56,6 @@ fun VoucherScreen(
                 .padding(paddingValues),
             contentAlignment = Alignment.Center
         ) {
-            // PERBAIKAN: Gunakan when dengan state dari uiState
             when {
                 uiState.isLoading -> CircularProgressIndicator(color = lightNavy)
                 uiState.error != null -> Text(text = uiState.error!!, color = RedError, textAlign = TextAlign.Center)
@@ -88,11 +86,35 @@ fun NewVoucherCard(
     expiry: String,
     onUseClick: () -> Unit
 ) {
+    // Siapkan teks diskon berdasarkan tipenya
+    val (discountText, unitText) = remember(voucher) {
+        when (voucher.discount_type) {
+            "percent" -> {
+                // Untuk persen, tampilkan angka bulatnya
+                val value = voucher.discount_value.toInt().toString()
+                val unit = "% OFF"
+                value to unit
+            }
+            "fixed" -> {
+                // Untuk fixed (dalam ribuan), bagi dengan 1000
+                val value = (voucher.discount_value / 1000).toInt().toString()
+                val unit = "RB OFF" // RB = Ribu, lebih umum di Indonesia
+                value to unit
+            }
+            else -> {
+                // Fallback jika ada tipe lain
+                val value = voucher.discount_value.toInt().toString()
+                val unit = "OFF"
+                value to unit
+            }
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = White) // Kartu tetap putih agar menonjol
+        colors = CardDefaults.cardColors(containerColor = White)
     ) {
         Row(
             modifier = Modifier.height(IntrinsicSize.Min),
@@ -109,20 +131,19 @@ fun NewVoucherCard(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = voucher.discount_value.toString(),
-                    color = White, // Teks diskon utama yang kuat
+                    text = discountText, // Teks diskon yang sudah diformat
+                    color = White,
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold,
                 )
                 Text(
-                    text = if (voucher.discount_type == "percent") "% OFF" else "K OFF",
+                    text = unitText, // Teks unit yang sudah diformat
                     color = White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Bagian Kanan (Detail dan Tombol Aksi)
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -132,20 +153,20 @@ fun NewVoucherCard(
                     text = "Voucher Diskon",
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
-                    color = BlackText // Teks judul yang paling jelas
+                    color = BlackText
                 )
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = voucher.voucher_code,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
-                    color = lightNavy // Kode voucher dengan warna aksen
+                    color = lightNavy
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = "Berlaku hingga $expiry",
                     style = MaterialTheme.typography.bodySmall,
-                    color = BlackText.copy(alpha = 0.6f) // Teks sekunder yang lebih lembut
+                    color = BlackText.copy(alpha = 0.6f)
                 )
                 Spacer(Modifier.height(12.dp))
                 Button(
@@ -154,7 +175,7 @@ fun NewVoucherCard(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(8.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = DarkBlueText, // Tombol aksi utama
+                        containerColor = DarkBlueText,
                         contentColor = White
                     )
                 ) {

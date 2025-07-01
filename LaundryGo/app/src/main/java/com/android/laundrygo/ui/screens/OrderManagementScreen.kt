@@ -241,7 +241,7 @@ private fun OrderItemCard(
 ) {
     var expanded by remember { mutableStateOf(false) }
     val fullStatusList = listOf("Menunggu Pembayaran", "Lunas", "Pick Up", "Washing", "Washed", "Delivery", "Completed")
-    val currentStatusText = fullStatusList.getOrElse(order.status) { "Status Tidak Valid" }
+    val currentStatusText = fullStatusList.getOrElse(order.status - 1) { "Status Tidak Valid" }
     val textFieldColors = OutlinedTextFieldDefaults.colors(
         focusedTextColor = DarkBlue, unfocusedTextColor = DarkBlue, focusedBorderColor = DarkBlue,
         unfocusedBorderColor = DarkBlue.copy(alpha = 0.5f), focusedLabelColor = DarkBlue,
@@ -270,7 +270,7 @@ private fun OrderItemCard(
                 )
                 ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(Cream)) {
                     statusOptions.forEachIndexed { index, status ->
-                        val newStatusValue = index + 2
+                        val newStatusValue = index + 3
                         val isPastOrCurrentStatus = newStatusValue <= order.status
                         DropdownMenuItem(
                             text = { Text(text = status, color = if (isPastOrCurrentStatus) DarkBlue.copy(alpha = 0.5f) else DarkBlue) },

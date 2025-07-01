@@ -54,8 +54,8 @@ class OrderManagementViewModel(
                 if (ordersResult.isSuccess) {
                     val ordersList = ordersResult.getOrNull() ?: emptyList()
 
-                    // PERBAIKAN: Filter pesanan yang belum dibayar (status 0) DAN yang sudah selesai (status 6)
-                    val filteredOrders = ordersList.filter { it.status != 0 && it.status != 6 }
+                    // Filter pesanan yang belum dibayar (status 0) DAN yang sudah selesai (status 7)
+                    val filteredOrders = ordersList.filter { it.status != 0 && it.status != 7 }
 
                     _orders.update { filteredOrders }
                 } else {
@@ -125,7 +125,7 @@ class OrderManagementViewModel(
     fun updateOrderStatus(transactionId: String, newStatusIndex: Int) {
         _isLoading.update { true }
         viewModelScope.launch {
-            val finalStatus = newStatusIndex + 2
+            val finalStatus = newStatusIndex + 3
             serviceRepository.updateOrderStatus(transactionId, finalStatus)
                 .onSuccess {
                     _feedbackMessage.update { "Status pesanan berhasil diperbarui" }
