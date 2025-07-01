@@ -150,9 +150,10 @@ private fun OrderDetailsDialogContent(detailState: OrderDetailState) {
         // --- Info Pesanan ---
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             DialogDetailRow(label = "No. Order", value = order.id.take(8).uppercase())
-            // PERBAIKAN: Gunakan customerName dan tambahkan alamat
+            // Gunakan customerName dan tambahkan alamat
             DialogDetailRow(label = "Nama Pemesan", value = order.customerName)
             DialogDetailRow(label = "Alamat", value = order.customerAddress)
+            DialogDetailRow(label = "No. Telepon", value = order.customerPhone)
             DialogDetailRow(label = "Status", value = currentStatusText, isHighlight = true)
         }
 
@@ -257,7 +258,7 @@ private fun OrderItemCard(
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val orderDate = order.createdAt?.let { SimpleDateFormat("EEEE, d MMMM yyyy, HH:mm", Locale("id", "ID")).format(it) } ?: "Tanggal tidak tersedia"
             Text(text = "Order ID: ${order.id.take(8).uppercase()}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = DarkBlue)
-            Text(text = "Pemesan: ${order.username}", style = MaterialTheme.typography.bodySmall, color = DarkBlue.copy(alpha = 0.8f))
+            Text(text = "Pemesan: ${order.customerName}", style = MaterialTheme.typography.bodySmall, color = DarkBlue.copy(alpha = 0.8f))
             Text(text = "Tanggal: $orderDate", style = MaterialTheme.typography.bodySmall, color = DarkBlue.copy(alpha = 0.8f))
             Divider(modifier = Modifier.padding(vertical = 4.dp))
             Text(text = "Total: ${formatRupiah(order.totalPrice)}", style = MaterialTheme.typography.bodyMedium, color = DarkBlue)
