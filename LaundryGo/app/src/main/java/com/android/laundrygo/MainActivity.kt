@@ -1,72 +1,121 @@
 package com.android.laundrygo
 
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.activity.viewModels
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.fragment.app.FragmentActivity
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.android.laundrygo.navigation.AppNavigationGraph
+import com.android.laundrygo.repository.AuthRepositoryImpl
+import com.android.laundrygo.repository.ServiceRepositoryImpl
 import com.android.laundrygo.ui.theme.LaundryGoTheme
+import com.android.laundrygo.util.BiometricAuthManager
+import com.android.laundrygo.viewmodel.MainViewModel
+import com.google.firebase.auth.FirebaseAuth
 
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
+
+    private val mainViewModel: MainViewModel by viewModels()
+    private lateinit var biometricAuthManager: BiometricAuthManager
+
+    // PERBAIKAN: Gunakan flag yang lebih sederhana
+    private var isReturningFromBackground = false
+    private lateinit var navController: androidx.navigation.NavHostController
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Inisialisasi Firebase sudah tidak ada di sini lagi
+        setupBiometricManager()
+
+        val serviceRepository = ServiceRepositoryImpl()
+        val authRepository = AuthRepositoryImpl()
+
         setContent {
+            navController = rememberNavController()
+            val isLocked by mainViewModel.isLocked.collectAsState()
+
+            LaunchedEffect(isLocked) {
+                if (isLocked) {
+                    biometricAuthManager.showBiometricPrompt(
+                        title = "Aplikasi Terkunci",
+                        subtitle = "Verifikasi untuk melanjutkan",
+                        description = "Gunakan sidik jari Anda untuk membuka aplikasi."
+                    )
+                }
+            }
+
             LaundryGoTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    AppNavigationGraph()
+                Surface(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AppNavigationGraph(
+                            mainViewModel = mainViewModel,
+                            serviceRepository = serviceRepository,
+                            authRepository = authRepository,
+                            navController = navController
+                        )
+
+                        if (isLocked) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.8f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    CircularProgressIndicator(color = Color.White)
+                                    Spacer(modifier = Modifier.height(16.dp))
+                                    Text("Menunggu verifikasi...", color = Color.White)
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        // Restore navigation state after setContent
+        if (savedInstanceState != null) {
+            val navState = savedInstanceState.getBundle("nav_state")
+            navController.restoreState(navState)
+        }
+        mainViewModel.decideStartDestination()
     }
-    // Launcher untuk permission
-    private val requestLocationPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val granted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
-                permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        if (granted) {
-            // Permission diberikan, lanjutkan akses lokasi
-        } else {
-            // Permission ditolak, tampilkan pesan ke user
+
+    override fun onPause() {
+        super.onPause()
+        isReturningFromBackground = true
+    }
+
+    override fun onResume() {
+        super.onResume()
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null && biometricAuthManager.canAuthenticate()) {
+            mainViewModel.lock()
         }
     }
 
-    private fun checkAndRequestLocationPermission() {
-        val fineLocationGranted = ActivityCompat.checkSelfPermission(
-            this, Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-        val coarseLocationGranted = ActivityCompat.checkSelfPermission(
-            this, Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (!fineLocationGranted && !coarseLocationGranted) {
-            // Request permission
-            requestLocationPermissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
-            )
-        } else {
-            // Permission sudah diberikan, lanjutkan akses lokasi
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        // Save the state of the NavController
+        navController.saveState()?.let {
+            outState.putBundle("nav_state", it)
         }
     }
 
-    override fun onStart() {
-        super.onStart()
-        checkAndRequestLocationPermission()
+    private fun setupBiometricManager() {
+        biometricAuthManager = BiometricAuthManager(
+            activity = this,
+            onAuthSuccess = { mainViewModel.unlock() },
+            onAuthError = { _, _ -> finish() },
+            onAuthFailed = {}
+        )
     }
 }

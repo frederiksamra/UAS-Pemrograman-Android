@@ -46,7 +46,7 @@ android {
 
 dependencies {
     // DIUBAH: Gunakan Firebase BOM untuk mengelola versi secara otomatis
-    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.16.0"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -73,6 +73,9 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.16")
     implementation(libs.androidx.preference.ktx)
     implementation(libs.androidx.foundation.layout.android)
+
+    implementation ("androidx.biometric:biometric:1.1.0")
+    implementation(libs.androidx.navigation.fragment.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

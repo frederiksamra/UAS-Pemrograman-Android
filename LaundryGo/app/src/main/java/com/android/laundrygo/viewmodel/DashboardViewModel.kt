@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.text.NumberFormat
 import java.util.*
+import kotlinx.coroutines.flow.update
 
 data class DashboardUiState(
     val user: User? = null,
@@ -30,6 +31,10 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
 
     private val _uiState = MutableStateFlow(DashboardUiState())
     val uiState: StateFlow<DashboardUiState> = _uiState.asStateFlow()
+
+    // State biometrik
+    private val _biometricAuthState = MutableStateFlow(BiometricAuthState.IDLE)
+    val biometricAuthState = _biometricAuthState.asStateFlow()
 
     init {
         observeUserProfile()
@@ -130,6 +135,26 @@ class DashboardViewModel(private val authRepository: AuthRepository) : ViewModel
                 }
             }
         }
+    }
+
+    fun requestBiometricAuth() {
+        _biometricAuthState.value = BiometricAuthState.AUTHENTICATING
+    }
+
+    fun onBiometricAuthSuccess() {
+        _biometricAuthState.value = BiometricAuthState.SUCCESS
+    }
+
+    fun onBiometricAuthFailed(isError: Boolean = false, message: String = "") {
+        if (isError) {
+            _biometricAuthState.value = BiometricAuthState.ERROR
+        } else {
+            _biometricAuthState.value = BiometricAuthState.FAILED
+        }
+    }
+
+    fun setBiometricNotAvailable() {
+        _biometricAuthState.value = BiometricAuthState.NOT_AVAILABLE
     }
 
     private fun formatCurrency(amount: Double): String {
