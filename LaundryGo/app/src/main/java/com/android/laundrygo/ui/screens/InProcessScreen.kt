@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -20,8 +21,6 @@ import androidx.compose.ui.unit.sp
 import com.android.laundrygo.model.Transaction
 import com.android.laundrygo.viewmodel.InProcessViewModel
 import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -133,6 +132,7 @@ fun OrderChip(
         color = backgroundColor,
         shape = MaterialTheme.shapes.medium,
         modifier = Modifier
+            .width(140.dp)
             .clickable { onClick() }
             .padding(vertical = 4.dp)
     ) {
@@ -159,18 +159,30 @@ fun StepperHorizontal(currentStep: Int) {
     ) {
         steps.forEachIndexed { index, label ->
             val stepNumber = index + 2
+            val isCompleted = currentStep > stepNumber
+            val isCurrent = currentStep == stepNumber
             val color = when {
-                currentStep > stepNumber -> MaterialTheme.colorScheme.primary
-                currentStep == stepNumber -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                isCompleted -> MaterialTheme.colorScheme.primary
+                isCurrent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                 else -> Color.LightGray
             }
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
-                        .background(color, shape = MaterialTheme.shapes.small)
-                )
+                        .size(28.dp)
+                        .background(color, shape = MaterialTheme.shapes.small),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isCompleted) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Completed",
+                            tint = Color.White,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(label, fontSize = 12.sp, color = Color.Black)
             }
