@@ -27,11 +27,9 @@ class InProcessViewModel(private val repository: ServiceRepository) : ViewModel(
         fetchInProcessTransactions()
     }
 
-
     fun selectTransaction(transaction: Transaction) {
         _selectedTransaction.value = transaction
     }
-
 
     fun fetchInProcessTransactions() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
@@ -44,28 +42,24 @@ class InProcessViewModel(private val repository: ServiceRepository) : ViewModel(
         viewModelScope.launch {
             _isLoading.value = true
 
-            repository.getTransactionsForUser(userId)
-                .onEach { result ->
-                    result.fold(
-                        onSuccess = { transactions ->
-                            val filtered = transactions.filter { it.status in 2..6 }
-                            _inProcessTransactions.value = filtered
-                            _errorMessage.value = null
+            repository.getTransactionsForUser(userId).collect { result ->
+                result.fold(
+                    onSuccess = { transactions ->
+                        val filtered = transactions.filter { it.status in 2..6 }
+                        _inProcessTransactions.value = filtered
+                        _errorMessage.value = null
 
-                            val currentSelected = _selectedTransaction.value
-                            if (currentSelected == null || filtered.none { it.id == currentSelected.id }) {
-                                _selectedTransaction.value = null
-                            }
-                        },
-                        onFailure = { exception ->
-                            _errorMessage.value = "Gagal memuat transaksi: ${exception.message}"
+                        val currentSelected = _selectedTransaction.value
+                        if (currentSelected == null || filtered.none { it.id == currentSelected.id }) {
+                            _selectedTransaction.value = filtered.firstOrNull()
                         }
-                    )
-                }
-                .onCompletion {
-                    _isLoading.value = false
-                }
-                .launchIn(viewModelScope)
+                    },
+                    onFailure = { exception ->
+                        _errorMessage.value = "Gagal memuat transaksi: ${exception.message}"
+                    }
+                )
+                _isLoading.value = false
+            }
         }
     }
 
