@@ -27,14 +27,16 @@ class InProcessViewModel(private val repository: ServiceRepository) : ViewModel(
         fetchInProcessTransactions()
     }
 
+
     fun selectTransaction(transaction: Transaction) {
         _selectedTransaction.value = transaction
     }
 
+
     fun fetchInProcessTransactions() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid
         if (userId.isNullOrEmpty()) {
-            _errorMessage.value = "Pengguna tidak terautentikasi."
+            _errorMessage.value = "Pengguna belum login."
             _isLoading.value = false
             return
         }
@@ -46,16 +48,12 @@ class InProcessViewModel(private val repository: ServiceRepository) : ViewModel(
                 .onEach { result ->
                     result.fold(
                         onSuccess = { transactions ->
-                            val filteredTransactions = transactions.filter {
-                                it.status in 2..6
-                            }
-
-                            _inProcessTransactions.value = filteredTransactions
+                            val filtered = transactions.filter { it.status in 2..6 }
+                            _inProcessTransactions.value = filtered
                             _errorMessage.value = null
 
                             val currentSelected = _selectedTransaction.value
-                            val stillExists = filteredTransactions.any { it.id == currentSelected?.id }
-                            if (!stillExists) {
+                            if (currentSelected == null || filtered.none { it.id == currentSelected.id }) {
                                 _selectedTransaction.value = null
                             }
                         },

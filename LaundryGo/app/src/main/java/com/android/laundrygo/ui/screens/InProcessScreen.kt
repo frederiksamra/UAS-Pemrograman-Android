@@ -10,17 +10,15 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,15 +34,14 @@ fun InProcessScreen(
     viewModel: InProcessViewModel,
     onBackClick: () -> Unit
 ) {
-    val uiState by viewModel.isLoading.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val inProcessTransactions by viewModel.inProcessTransactions.collectAsState()
     val selectedTransaction by viewModel.selectedTransaction.collectAsState()
 
     val statusList = remember {
         listOf(
-            "Menunggu Pembayaran", // Status 1
-            "Lunas", "Pick Up", "Washing", "Washed", "Delivery", "Completed"
+            "Menunggu Pembayaran", "Lunas", "Pick Up", "Washing", "Washed", "Delivery", "Completed"
         )
     }
 
@@ -54,78 +51,83 @@ fun InProcessScreen(
                 title = { Text("Lacak Pesanan", fontSize = 20.sp) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "Kembali")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
                     }
                 }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
-    ) { padding ->
-        Row(
+    ) { paddingValues ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
-            // LEFT: List Pesanan
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(0.4f)
-            ) {
-                Text(
-                    "Pesanan Sedang Diproses",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(vertical = 8.dp)
-                )
 
-                LazyColumn {
-                    items(inProcessTransactions, key = { it.id }) { transaction ->
-                        OrderItem(
-                            transaction = transaction,
-                            isSelected = selectedTransaction?.id == transaction.id,
-                            onItemClick = { viewModel.selectTransaction(transaction) },
-                            statusList = statusList
+            // STEP 1: Stepper dan deskripsi
+            AnimatedVisibility(
+                visible = selectedTransaction != null,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    selectedTransaction?.let { transaction ->
+                        Text(
+                            text = getStatusDescription(transaction.status),
+                            style = MaterialTheme.typography.bodyLarge,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 16.dp)
                         )
-                        Divider()
+                        HorizontalStepper(
+                            currentStep = transaction.status,
+                            steps = statusList.drop(1)
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
 
-            // RIGHT: Stepper dan status
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(0.6f)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(16.dp)
-            ) {
-                when {
-                    uiState -> CircularProgressIndicator()
-                    errorMessage != null -> Text(errorMessage!!)
-                    else -> {
-                        if (selectedTransaction == null) {
-                            Text(
-                                "Silakan pilih salah satu pesanan untuk melihat status prosesnya.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        AnimatedVisibility(
-                            visible = selectedTransaction != null,
-                            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-                            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                selectedTransaction?.let {
-                                    OrderStepper(transaction = it, statusList = statusList)
-                                }
-                            }
-                        }
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
+                }
+                errorMessage != null -> {
+                    Text(
+                        errorMessage ?: "Terjadi kesalahan",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+
+            Text(
+                "Daftar Pesanan Anda",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(inProcessTransactions, key = { it.id }) { transaction ->
+                    OrderItem(
+                        transaction = transaction,
+                        isSelected = selectedTransaction?.id == transaction.id,
+                        onItemClick = { viewModel.selectTransaction(transaction) },
+                        statusList = statusList
+                    )
+                    Divider()
                 }
             }
         }
@@ -170,29 +172,6 @@ fun OrderItem(
             color = textColor,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp
-        )
-    }
-}
-
-@Composable
-fun OrderStepper(transaction: Transaction, statusList: List<String>) {
-    val currentStep = transaction.status
-
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        Text(
-            text = getStatusDescription(currentStep),
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        HorizontalStepper(
-            currentStep = currentStep,
-            steps = statusList.drop(1)
         )
     }
 }
@@ -255,7 +234,8 @@ fun HorizontalStepper(
                 Text(
                     text = step,
                     style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
                 )
             }
 
