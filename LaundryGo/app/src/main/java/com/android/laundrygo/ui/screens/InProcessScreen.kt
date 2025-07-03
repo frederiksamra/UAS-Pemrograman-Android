@@ -1,31 +1,27 @@
 package com.android.laundrygo.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.android.laundrygo.model.Transaction
 import com.android.laundrygo.viewmodel.InProcessViewModel
 import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -36,98 +32,88 @@ fun InProcessScreen(
 ) {
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
-    val inProcessTransactions by viewModel.inProcessTransactions.collectAsState()
+    val transactions by viewModel.inProcessTransactions.collectAsState()
     val selectedTransaction by viewModel.selectedTransaction.collectAsState()
 
-    val statusList = remember {
-        listOf(
-            "Menunggu Pembayaran", "Lunas", "Pick Up", "Washing", "Washed", "Delivery", "Completed"
-        )
-    }
+    val statusDescriptions = mapOf(
+        2 to "Pembayaran berhasil, pesanan akan segera dijemput oleh kurir.",
+        3 to "Pesanan sedang dijemput oleh kurir.",
+        4 to "Pesanan sedang dicuci oleh tim laundry.",
+        5 to "Pencucian selesai, siap untuk dikirim.",
+        6 to "Pesanan sedang diantarkan ke lokasi Anda."
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Lacak Pesanan", fontSize = 20.sp) },
+                title = { Text("Lacak Pesanan") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Kembali")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali"
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    scrolledContainerColor = Color.Transparent,
+                    titleContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             )
         },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+        containerColor = Color.White
+    ) { innerPadding ->
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(innerPadding)
                 .padding(horizontal = 16.dp)
         ) {
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // STEP 1: Stepper dan deskripsi
-            AnimatedVisibility(
-                visible = selectedTransaction != null,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 })
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    selectedTransaction?.let { transaction ->
-                        Text(
-                            text = getStatusDescription(transaction.status),
-                            style = MaterialTheme.typography.bodyLarge,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                        HorizontalStepper(
-                            currentStep = transaction.status,
-                            steps = statusList.drop(1)
-                        )
-                    }
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
-            }
-
-
-            when {
-                isLoading -> {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                errorMessage != null -> {
+            } else if (errorMessage != null) {
+                Text(text = errorMessage!!, color = Color.Red)
+            } else {
+                selectedTransaction?.let { transaction ->
                     Text(
-                        errorMessage ?: "Terjadi kesalahan",
-                        color = MaterialTheme.colorScheme.error
+                        text = statusDescriptions[transaction.status]
+                            ?: "Status tidak diketahui.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 16.dp),
+                        textAlign = TextAlign.Center
                     )
+
+                    StepperHorizontal(currentStep = transaction.status)
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
 
+                Text(
+                    "Daftar Pesanan Anda",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
 
-            Text(
-                "Daftar Pesanan Anda",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-
-            LazyColumn(
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(inProcessTransactions, key = { it.id }) { transaction ->
-                    OrderItem(
-                        transaction = transaction,
-                        isSelected = selectedTransaction?.id == transaction.id,
-                        onItemClick = { viewModel.selectTransaction(transaction) },
-                        statusList = statusList
-                    )
-                    Divider()
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    contentPadding = PaddingValues(horizontal = 4.dp)
+                ) {
+                    items(transactions, key = { it.id }) { transaction ->
+                        OrderChip(
+                            transaction = transaction,
+                            isSelected = selectedTransaction?.id == transaction.id,
+                            onClick = { viewModel.selectTransaction(transaction) }
+                        )
+                    }
                 }
             }
         }
@@ -135,144 +121,67 @@ fun InProcessScreen(
 }
 
 @Composable
-fun OrderItem(
+fun OrderChip(
     transaction: Transaction,
     isSelected: Boolean,
-    onItemClick: (Transaction) -> Unit,
-    statusList: List<String>
+    onClick: () -> Unit
 ) {
-    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent
-    val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
 
-    Row(
+    Surface(
+        color = backgroundColor,
+        shape = MaterialTheme.shapes.medium,
         modifier = Modifier
-            .fillMaxWidth()
-            .background(backgroundColor)
-            .clickable { onItemClick(transaction) }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .clickable { onClick() }
+            .padding(vertical = 4.dp)
     ) {
-        Column {
-            Text(
-                text = "ID: ${transaction.id.take(8).uppercase()}",
-                fontWeight = FontWeight.Bold,
-                color = textColor
-            )
-            Text(
-                text = transaction.createdAt?.toFormattedString() ?: "Tanggal tidak tersedia",
-                color = textColor.copy(alpha = 0.7f),
-                fontSize = 12.sp
-            )
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("ID: ${transaction.id.take(6)}", color = contentColor, fontSize = 12.sp)
+            Text(transaction.createdAt?.toShortFormattedString() ?: "-", color = contentColor, fontSize = 10.sp)
         }
-
-        val currentStatus = statusList.getOrNull(transaction.status - 1) ?: "Status Tidak Diketahui"
-        Text(
-            text = currentStatus,
-            color = textColor,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp
-        )
     }
 }
 
 @Composable
-fun HorizontalStepper(
-    currentStep: Int,
-    steps: List<String>,
-    modifier: Modifier = Modifier
-) {
+fun StepperHorizontal(currentStep: Int) {
+    val steps = listOf("Lunas", "Pick Up", "Washing", "Washed", "Delivery")
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        steps.forEachIndexed { index, step ->
+        steps.forEachIndexed { index, label ->
             val stepNumber = index + 2
-            val isCurrent = currentStep == stepNumber
-            val isCompleted = currentStep > stepNumber
-
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.weight(1f)
-            ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(
-                            color = when {
-                                isCurrent -> MaterialTheme.colorScheme.primary
-                                isCompleted -> Color.Gray
-                                else -> Color.LightGray
-                            },
-                            shape = CircleShape
-                        )
-                ) {
-                    if (isCompleted) {
-                        Icon(
-                            Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    } else {
-                        Text(
-                            text = "$stepNumber",
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = step,
-                    style = MaterialTheme.typography.labelSmall,
-                    maxLines = 1,
-                    textAlign = TextAlign.Center
-                )
+            val color = when {
+                currentStep > stepNumber -> MaterialTheme.colorScheme.primary
+                currentStep == stepNumber -> MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                else -> Color.LightGray
             }
 
-            if (index != steps.lastIndex) {
-                Spacer(modifier = Modifier.width(4.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
                     modifier = Modifier
-                        .height(2.dp)
-                        .weight(1f)
-                        .background(
-                            if (currentStep > stepNumber)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                Color.LightGray
-                        )
-                        .align(Alignment.CenterVertically)
+                        .size(24.dp)
+                        .background(color, shape = MaterialTheme.shapes.small)
                 )
-                Spacer(modifier = Modifier.width(4.dp))
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(label, fontSize = 12.sp, color = Color.Black)
+            }
+            if (index != steps.lastIndex) {
+                Spacer(modifier = Modifier.width(8.dp))
             }
         }
     }
 }
 
-fun getStatusDescription(status: Int): String {
-    return when (status) {
-        1 -> "Sedang menunggu pembayaran, segera lakukan pembayaran."
-        2 -> "Pembayaran sudah berhasil, pesanan akan segera dijemput oleh kurir."
-        3 -> "Pesanan Anda sedang dijemput oleh kurir."
-        4 -> "Pesanan Anda sedang dalam proses pencucian."
-        5 -> "Pencucian telah selesai, menunggu pengantaran."
-        6 -> "Kurir sedang mengantarkan pesanan Anda."
-        7 -> "Pesanan telah selesai. Terima kasih telah menggunakan layanan kami!"
-        else -> "Status tidak diketahui."
-    }
-}
-
-private fun Date.toFormattedString(): String {
-    val format = SimpleDateFormat("EEEE, d MMMM yyyy, HH:mm", Locale("id", "ID"))
+fun Date.toShortFormattedString(): String {
+    val format = SimpleDateFormat("d MMM yyyy, HH:mm", Locale("id", "ID"))
     return format.format(this)
 }
